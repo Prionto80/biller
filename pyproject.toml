@@ -1,0 +1,18 @@
+[project]
+name = "biller"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "docxcompose>=2.2.0",
+    "docxtpl>=0.20.2",
+    "fastapi>=0.142.2",
+    "google-genai>=2.28.0",
+    "httpx>=0.28.1",
+    "jinja2>=3.1.6",
+    "openpyxl>=3.1.5",
+    "python-docx>=1.2.0",
+    "python-multipart>=0.0.32",
+    "uvicorn[standard]>=0.54.0",
+]

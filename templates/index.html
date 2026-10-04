@@ -1,0 +1,2766 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biller - Modern Bill & Invoice Studio</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            300: '#a5b4fc',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81',
+                            950: '#1e1b4b',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+                        serif: ['Georgia', 'Cambria', 'Times New Roman', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Smooth transitions */
+        * {
+            transition: background-color 0.15s ease, border-color 0.15s ease;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 7px;
+            height: 7px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #334155;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        /* Subtle glow effects */
+        .glass-card {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        /* Focus rings for form inputs */
+        input:focus, select:focus, textarea:focus {
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.4);
+        }
+
+        /* Printable A4 Paper styling */
+        .paper-sheet {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.08);
+            transform-origin: top center;
+            transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Hover & focus effect on editable areas of the document sheet */
+        .doc-editable {
+            outline: none;
+            border-radius: 4px;
+            padding: 1px 4px;
+            margin: -1px -4px;
+            cursor: text;
+            transition: background-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .doc-editable:hover {
+            background-color: rgba(99, 102, 241, 0.08);
+            box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.35);
+        }
+        .doc-editable:focus {
+            background-color: rgba(254, 243, 199, 0.85) !important;
+            box-shadow: 0 0 0 2px #4f46e5 !important;
+        }
+
+        /* Print stylesheet */
+        @media print {
+            body {
+                background: #ffffff !important;
+                color: #000000 !important;
+            }
+            header, #toastContainer, #leftFormColumn, .no-print, #docToolbar, footer {
+                display: none !important;
+            }
+            main {
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            #rightDocColumn {
+                width: 100% !important;
+                display: block !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                height: auto !important;
+            }
+            #sheetContainer {
+                border: none !important;
+                background: transparent !important;
+                padding: 0 !important;
+                overflow: visible !important;
+            }
+            #sheetWrapper {
+                width: 100% !important;
+                height: auto !important;
+            }
+            .paper-sheet {
+                box-shadow: none !important;
+                border: none !important;
+                padding: 15mm 20mm !important;
+                margin: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                transform: none !important;
+            }
+            .doc-editable {
+                border: none !important;
+                box-shadow: none !important;
+                background: transparent !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+        }
+
+        /* AI Workorder Scanner Laser Animation */
+        @keyframes scanLaser {
+            0% {
+                top: 2%;
+                opacity: 0.95;
+            }
+            50% {
+                top: 95%;
+                opacity: 0.95;
+            }
+            100% {
+                top: 2%;
+                opacity: 0.95;
+            }
+        }
+        .scanner-laser {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #38bdf8, #818cf8, #a855f7, #38bdf8, transparent);
+            box-shadow: 0 0 14px 4px rgba(99, 102, 241, 0.8), 0 0 24px 6px rgba(56, 189, 248, 0.6);
+            animation: scanLaser 2.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+            pointer-events: none;
+            z-index: 20;
+        }
+        .scanner-grid {
+            background-size: 24px 24px;
+            background-image: 
+                linear-gradient(to right, rgba(99, 102, 241, 0.12) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(99, 102, 241, 0.12) 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="h-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased selection:bg-brand-500 selection:text-white flex flex-col">
+
+    <!-- Top Navigation Bar -->
+    <header class="no-print sticky top-0 z-40 w-full border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 glass-card">
+        <div class="max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
+            <!-- Logo & Brand -->
+            <div class="flex items-center gap-3">
+                <div class="h-9 w-9 rounded-xl bg-gradient-to-tr from-brand-600 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-md shadow-brand-500/20 text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-slate-900 via-brand-700 to-indigo-600 dark:from-white dark:via-brand-300 dark:to-indigo-400 bg-clip-text text-transparent">Biller</span>
+                        <span class="px-2 py-0.5 text-[10px] font-semibold tracking-wide rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-300/40 dark:border-emerald-800/50">FastAPI Studio</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block">Two-Way Interactive Bill & Document Studio</p>
+                </div>
+            </div>
+
+            <!-- Header Quick Actions -->
+            <div class="flex items-center gap-2 sm:gap-2.5">
+                <!-- Project Selector & Stack Trigger -->
+                <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/90 rounded-xl p-1 border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <div class="flex items-center gap-1.5 px-2 py-0.5">
+                        <span class="text-xs">📁</span>
+                        <select id="headerProjectSelect" onchange="switchProject(this.value)" class="bg-transparent text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none max-w-[110px] sm:max-w-[150px] truncate cursor-pointer">
+                            <option value="default-project">Default Project</option>
+                        </select>
+                    </div>
+                    <button type="button" onclick="promptNewProject()" class="p-1 text-slate-500 hover:text-brand-600 dark:text-slate-400 dark:hover:text-brand-400 rounded-lg hover:bg-white dark:hover:bg-slate-700 transition-colors" title="Create New Project">
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14m-7-7h14"/></svg>
+                    </button>
+                    <!-- Project Stack Drawer Button -->
+                    <button type="button" onclick="openProjectStackDrawer()" id="projectStackBadgeBtn" class="px-2.5 py-1 text-xs font-bold rounded-lg text-white bg-indigo-600 hover:bg-indigo-500 shadow-sm flex items-center gap-1.5 transition-all" title="View Project Bills Stack">
+                        <span>📚 Stack</span>
+                        <span id="stackCountBadge" class="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-white/25 text-white">0</span>
+                    </button>
+                </div>
+
+                <!-- AI Workorder Batch Scan Button -->
+                <button type="button" onclick="openScanModal()" class="px-3.5 py-1.5 text-xs font-bold rounded-lg text-white bg-gradient-to-r from-violet-600 via-indigo-600 to-brand-600 hover:from-violet-500 hover:to-brand-500 shadow-md shadow-indigo-500/25 flex items-center gap-1.5 transition-all transform hover:-translate-y-0.5 active:translate-y-0 group" title="Scan multiple Walton workorders all at once with Gemini Vision AI">
+                    <svg class="w-4 h-4 text-amber-300 group-hover:rotate-12 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <path d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <span>Scan</span>
+                    <span class="hidden sm:inline-block px-1.5 py-0.2 text-[9px] uppercase tracking-wider rounded bg-white/20 font-mono">Batch</span>
+                </button>
+
+                <!-- Sample Data Button -->
+                <button type="button" onclick="fillDemoData()" class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 transition-all shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+                    </svg>
+                    <span>Sample Data</span>
+                </button>
+
+                <!-- Dark/Light Mode Toggle -->
+                <button type="button" onclick="toggleDarkMode()" id="themeToggleBtn" aria-label="Toggle theme" class="p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors">
+                    <svg id="sunIcon" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <circle cx="12" cy="12" r="4"></circle>
+                        <path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+                    </svg>
+                    <svg id="moonIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container (Height optimized) -->
+    <main class="flex-1 max-w-[1760px] w-full mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-4">
+        
+        <!-- Toast Notification Area -->
+        <div id="toastContainer" class="fixed top-16 right-6 z-50 flex flex-col gap-2 max-w-md w-full pointer-events-none no-print"></div>
+
+        <!-- Two Column Responsive Layout -->
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-5 sm:gap-6 items-start">
+
+            <!-- LEFT COLUMN: The Form (5 Columns on XL, height-matched with smooth scroll) -->
+            <div id="leftFormColumn" class="xl:col-span-5 space-y-4 no-print xl:max-h-[calc(100vh-5.5rem)] xl:overflow-y-auto pr-1">
+                <form id="billForm" onsubmit="handleFormSubmit(event)" class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none p-5 sm:p-6 space-y-4.5">
+
+                    <!-- Header inside card -->
+                    <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                        <div>
+                            <h2 class="text-base font-extrabold text-slate-900 dark:text-white">Invoice Details</h2>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400">Jump with <kbd class="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono text-[10px]">↑ ↓ ← →</kbd> &bull; Submit with <kbd class="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono text-[10px]">Enter</kbd></p>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                            bill.docx
+                        </span>
+                    </div>
+
+                    <!-- Decorated AI Scan Workorder Banner -->
+                    <div class="p-3 rounded-2xl bg-gradient-to-r from-indigo-50/90 via-purple-50/70 to-brand-50/90 dark:from-indigo-950/50 dark:via-purple-950/40 dark:to-brand-950/50 border border-indigo-200/80 dark:border-indigo-800/70 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-brand-500 text-white flex items-center justify-center shadow-sm shrink-0">
+                                <svg class="w-4 h-4 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                    <path d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-xs font-bold text-slate-800 dark:text-slate-100">Workorder Auto-Scan</span>
+                                    <span class="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-900/80 dark:text-indigo-300">Gemini</span>
+                                </div>
+                                <p class="text-[10px] text-slate-500 dark:text-slate-400">Extract PR, showroom & boards directly from workorder photo</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="quickScanSample()" class="px-2.5 py-1 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 hover:bg-white dark:hover:bg-slate-800 rounded-lg border border-indigo-200 dark:border-indigo-700/80 transition-all flex items-center gap-1" title="Instantly scan workspace bill.jpeg">
+                                <span>⚡ bill.jpeg</span>
+                            </button>
+                            <button type="button" onclick="openScanModal()" class="px-3 py-1 text-[11px] font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-sm flex items-center gap-1.5 transition-all">
+                                <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m12-5-5-5-5 5m5-5v12"/></svg>
+                                <span>Scan Photo</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Section 1: Bill & PR Identifiers -->
+                    <div>
+                        <div class="flex items-center gap-2 mb-2.5 pb-1.5 border-b border-slate-100 dark:border-slate-800">
+                            <span class="w-5 h-5 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[10px] font-bold">1</span>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Basic Info</h3>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <!-- Bill No -->
+                            <div>
+                                <label for="bill_no" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Bill No <span class="text-rose-500">*</span>
+                                </label>
+                                <input type="text" id="bill_no" name="bill_no" required
+                                       class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white placeholder-slate-400 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium"
+                                       placeholder="e.g. 1042" />
+                            </div>
+
+                            <!-- PR No -->
+                            <div>
+                                <label for="pr_no" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    PR No <span class="text-rose-500">*</span>
+                                </label>
+                                <input type="text" id="pr_no" name="pr_no" required
+                                       class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white placeholder-slate-400 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium"
+                                       placeholder="e.g. PR-8902" />
+                            </div>
+
+                            <!-- Date -->
+                            <div>
+                                <label for="date" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Date
+                                </label>
+                                <input type="date" id="date" name="date" value="{{ today_date }}"
+                                       class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 2: Brand & Showroom Information -->
+                    <div>
+                        <div class="flex items-center gap-2 mb-2.5 pb-1.5 border-b border-slate-100 dark:border-slate-800">
+                            <span class="w-5 h-5 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-[10px] font-bold">2</span>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Client & Location</h3>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <!-- Brand Selection -->
+                            <div>
+                                <label for="brand" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Brand <span class="text-rose-500">*</span>
+                                </label>
+                                <select id="brand" name="brand" onchange="handleBrandChange()"
+                                        class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium">
+                                    <option value="p">Walton Hi-Tech (PLAZA)</option>
+                                    <option value="m">Walton Digi-Tech Mobile (MOB)</option>
+                                    <option value="h">Walton Hi-Tech (HAP)</option>
+                                    <option value="e">Walton Hi-Tech (EAP)</option>
+                                    <option value="c">Walton Hi-Tech (COM)</option>
+                                    <option value="custom">-- Custom Brand --</option>
+                                </select>
+                                <input type="text" id="customBrandInput" placeholder="Enter custom brand"
+                                       class="hidden mt-2 w-full px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                            </div>
+
+                            <!-- Showroom Name -->
+                            <div>
+                                <label for="showroom" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Showroom <span class="text-rose-500">*</span>
+                                </label>
+                                <input type="text" id="showroom" name="showroom" required
+                                       class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white placeholder-slate-400 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium"
+                                       placeholder="e.g. Mirpur Plaza" />
+                            </div>
+
+                            <!-- Mobile -->
+                            <div>
+                                <label for="mobile" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Mobile <span class="text-rose-500">*</span>
+                                </label>
+                                <input type="text" id="mobile" name="mobile" required
+                                       class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white placeholder-slate-400 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium"
+                                       placeholder="e.g. 01700-000000" />
+                            </div>
+
+                            <!-- Address -->
+                            <div>
+                                <label for="address" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Address <span class="text-rose-500">*</span>
+                                </label>
+                                <input type="text" id="address" name="address" required
+                                       class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white placeholder-slate-400 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium"
+                                       placeholder="e.g. Sector 3, Uttara, Dhaka" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 3: Boards Specifications -->
+                    <div>
+                        <div class="flex items-center justify-between mb-2.5 pb-1.5 border-b border-slate-100 dark:border-slate-800">
+                            <div class="flex items-center gap-2">
+                                <span class="w-5 h-5 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-[10px] font-bold">3</span>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Boards Specifications</h3>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button type="button" onclick="toggleSpecInputMode()" id="specModeBtn"
+                                        class="text-[11px] font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 underline underline-offset-4">
+                                    <span id="specModeLabel">Quick Text Mode</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 3A. Structured Board Items Table -->
+                        <div id="structuredBoardsContainer" class="space-y-3">
+                            <div class="space-y-2.5" id="boardRows">
+                                <!-- Board row items rendered here -->
+                            </div>
+
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pt-1">
+                                <button type="button" onclick="addBoardRow()"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/60 hover:bg-brand-100 dark:hover:bg-brand-900/60 border border-brand-200 dark:border-brand-800/60 transition-all">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                    <span>Add Another Board</span>
+                                </button>
+
+                                <span class="text-[10px] text-slate-400 dark:text-slate-500">
+                                    Rates: Horizontal (৳365) &bull; Vertical (৳270) &bull; Pana (৳88)
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- 3B. Quick Text / Paste Specifications -->
+                        <div id="quickTextContainer" class="hidden space-y-2">
+                            <div class="flex items-center justify-between">
+                                <label for="boards_specifications" class="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                    Type or Paste Specifications:
+                                </label>
+                                <span class="text-[10px] text-slate-400">Width x Height, Qty, [Rate]</span>
+                            </div>
+                            <textarea id="boards_specifications" name="boards_specifications" rows="3"
+                                      class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-brand-500 placeholder-slate-400"
+                                      placeholder="10 x 5, 2, 365&#10;8 x 4, 1, 270"></textarea>
+                            <div class="flex justify-end">
+                                <button type="button" onclick="parseTextToRows()"
+                                        class="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200">
+                                    Parse to Table
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hidden serialized JSON container -->
+                    <input type="hidden" id="boards_json" name="boards_json" value="" />
+
+                    <!-- Section 4: Actions & Submit Button -->
+                    <div class="pt-2.5 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
+                        <div class="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                            <div class="flex items-center gap-1.5">
+                                <kbd class="px-1.5 py-0.5 text-[10px] font-mono font-semibold rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300">↵ Enter</kbd>
+                                <span>Press Enter to Add to Stack</span>
+                            </div>
+                            <div class="flex items-center gap-1 text-[11px]">
+                                <span>Stacking to:</span>
+                                <span id="formProjectBadge" class="font-bold text-indigo-600 dark:text-indigo-400">Default Project</span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2.5 w-full sm:w-auto">
+                            <button type="button" onclick="resetForm()"
+                                    class="w-1/3 sm:w-auto px-3.5 py-2 text-xs font-semibold rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors">
+                                Reset
+                            </button>
+
+                            <button type="submit" id="submitBtn"
+                                    class="w-2/3 sm:w-auto flex-1 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white bg-gradient-to-r from-indigo-600 via-brand-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-md shadow-indigo-500/20 active:scale-[0.98] transition-all" title="Add this bill to active project stack">
+                                <svg id="submitIcon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                                </svg>
+                                <svg id="submitSpinner" class="w-4 h-4 animate-spin hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span id="submitText">Add to Stack</span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- RIGHT COLUMN: Viewport Height Fitted Interactive Document Studio & A4 Live Sheet (7 Columns on XL) -->
+            <div id="rightDocColumn" class="xl:col-span-7 print-full flex flex-col space-y-2.5 xl:h-[calc(100vh-5.5rem)]">
+
+                <!-- Document Studio Toolbar (No-Print) -->
+                <div id="docToolbar" class="shrink-0 flex flex-wrap items-center justify-between gap-2.5 p-2.5 sm:p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md shadow-slate-200/50 dark:shadow-none no-print">
+                    <div class="flex items-center gap-2">
+                        <div class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                        <span class="text-xs font-bold text-slate-800 dark:text-slate-200">Live A4 Sheet</span>
+                        <span class="px-1.5 py-0.5 text-[9px] font-semibold rounded bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                            ✏️ Direct Edit
+                        </span>
+                    </div>
+
+                    <div class="flex items-center gap-1.5">
+                        <!-- Fit Height Button -->
+                        <button type="button" id="fitHeightBtn" onclick="fitToViewportHeight()" class="px-2 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 flex items-center gap-1 transition-all" title="Fit Entire Document to Viewport Height">
+                            <svg class="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                            </svg>
+                            <span>Fit Height</span>
+                        </button>
+
+                        <!-- Zoom Controller -->
+                        <div class="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700 text-xs">
+                            <button type="button" onclick="adjustZoom(-0.08)" class="px-1.5 py-0.5 hover:bg-white dark:hover:bg-slate-700 rounded font-bold text-slate-700 dark:text-slate-300" title="Zoom Out">-</button>
+                            <span id="zoomLevel" class="px-1.5 font-mono font-medium text-[10px] text-slate-700 dark:text-slate-300">100%</span>
+                            <button type="button" onclick="adjustZoom(0.08)" class="px-1.5 py-0.5 hover:bg-white dark:hover:bg-slate-700 rounded font-bold text-slate-700 dark:text-slate-300" title="Zoom In">+</button>
+                            <button type="button" onclick="resetZoom()" class="px-1 py-0.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[9px] font-semibold text-slate-500" title="100%">1:1</button>
+                        </div>
+
+                        <!-- Print / Save as PDF Button -->
+                        <button type="button" onclick="window.print()" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 flex items-center gap-1 shadow-sm transition-all" title="Print or Save as PDF">
+                            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                                <rect x="6" y="14" width="12" height="8"></rect>
+                            </svg>
+                            <span class="hidden sm:inline">Print/PDF</span>
+                        </button>
+
+                        <!-- Download DOCX Button -->
+                        <button type="button" onclick="triggerSubmitWithFeedback()" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white flex items-center gap-1 shadow-sm transition-all" title="Generate & Download Word Document">
+                            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            <span>DOCX</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Printable Document Canvas Sheet Container (Fit viewport height with smooth overflow) -->
+                <div id="sheetContainer" class="flex-1 min-h-0 overflow-auto flex justify-center items-start bg-slate-200/50 dark:bg-slate-900/40 rounded-2xl border border-slate-200 dark:border-slate-800 p-2 sm:p-3">
+                    <div id="sheetWrapper" class="flex justify-center items-start">
+                        <div id="documentSheet" class="paper-sheet w-[740px] p-7 sm:p-9 text-slate-900 select-text font-serif leading-relaxed text-sm bg-white border border-slate-300 rounded-sm">
+                            
+                            <!-- Top Row: Bill No & Date -->
+                            <div class="flex justify-between items-baseline pb-2">
+                                <div class="text-sm">
+                                    <span class="font-sans font-bold text-slate-700">Bill No</span>
+                                    <span contenteditable="true" id="sheet_bill_no" oninput="onSheetDirectEdit('bill_no', this.innerText)" class="doc-editable font-bold text-base font-sans ml-1 text-slate-950" title="Click to edit Bill No">1042</span>
+                                </div>
+                                <div class="text-sm text-right">
+                                    <span class="font-sans font-bold text-slate-700">Date :</span>
+                                    <span contenteditable="true" id="sheet_date" oninput="onSheetDirectEdit('date', this.innerText)" class="doc-editable font-sans ml-1 font-medium text-slate-950" title="Click to edit Date">05.10.2026</span>
+                                </div>
+                            </div>
+
+                            <!-- Client & Showroom Row -->
+                            <div class="mt-3.5 flex justify-between items-start gap-4">
+                                <div class="flex-1">
+                                    <div contenteditable="true" id="sheet_brand" oninput="onSheetDirectEdit('brand_text', this.innerText)" class="doc-editable font-bold text-base text-slate-950 font-sans" title="Click to edit Brand name">
+                                        Walton Hi-Tech Industries (PLC) (PLAZA)
+                                    </div>
+                                    <div contenteditable="true" id="sheet_address" oninput="onSheetDirectEdit('address', this.innerText)" class="doc-editable text-xs text-slate-700 mt-1 font-sans" title="Click to edit Address">
+                                        Sector 3, Uttara, Dhaka
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div contenteditable="true" id="sheet_showroom" oninput="onSheetDirectEdit('showroom', this.innerText)" class="doc-editable font-bold text-base text-slate-950 font-sans" title="Click to edit Showroom">
+                                        Mirpur Plaza
+                                    </div>
+                                    <div contenteditable="true" id="sheet_mobile" oninput="onSheetDirectEdit('mobile', this.innerText)" class="doc-editable text-xs text-slate-700 mt-1 font-sans" title="Click to edit Mobile">
+                                        01700-000000
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- PR No & Subject -->
+                            <div class="mt-4 space-y-1.5 text-xs font-sans">
+                                <div>
+                                    <span class="font-bold text-slate-800">PR No:</span>
+                                    <span contenteditable="true" id="sheet_pr_no" oninput="onSheetDirectEdit('pr_no', this.innerText)" class="doc-editable font-medium ml-1 text-slate-950" title="Click to edit PR No">PR-8902</span>
+                                </div>
+                                <div>
+                                    <span class="font-bold text-slate-800">Subject:</span>
+                                    <span contenteditable="true" id="sheet_subject" oninput="onSheetDirectEdit('subject', this.innerText)" class="doc-editable font-medium ml-1 text-slate-950" title="Click to edit Subject">Bill for supply of Aluminium Light box.</span>
+                                </div>
+                            </div>
+
+                            <!-- Itemized Table (Exact replica of bill.docx) -->
+                            <div class="mt-4 overflow-x-auto">
+                                <table class="w-full text-xs border-collapse border border-slate-900 font-sans">
+                                    <thead>
+                                        <tr class="bg-slate-100 text-slate-900 font-bold border-b border-slate-900">
+                                            <th class="border border-slate-900 px-2 py-1.5 text-center w-12">Sl No</th>
+                                            <th class="border border-slate-900 px-3 py-1.5 text-left">Particle</th>
+                                            <th class="border border-slate-900 px-2 py-1.5 text-center w-14">Width</th>
+                                            <th class="border border-slate-900 px-2 py-1.5 text-center w-14">Height</th>
+                                            <th class="border border-slate-900 px-2 py-1.5 text-center w-14">Quantity</th>
+                                            <th class="border border-slate-900 px-2 py-1.5 text-center w-16">Total Sft</th>
+                                            <th class="border border-slate-900 px-2 py-1.5 text-center w-14">rate</th>
+                                            <th class="border border-slate-900 px-3 py-1.5 text-right w-24">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="sheetTableBody">
+                                        <!-- Rendered Board Rows with live contenteditable cells -->
+                                    </tbody>
+                                    <tfoot id="sheetTableFoot" class="font-bold text-slate-900">
+                                        <!-- Rendered Summary Rows -->
+                                    </tfoot>
+                                </table>
+                            </div>
+
+                            <!-- Footer: In Words -->
+                            <div class="mt-4 text-xs font-sans">
+                                <span class="font-bold text-slate-900">In words:</span>
+                                <span contenteditable="true" id="sheet_words" oninput="onSheetWordsEdit(this.innerText)" class="doc-editable italic font-medium ml-1 text-slate-950" title="Click to edit In-Words text">Zero Taka Only.</span>
+                            </div>
+
+                            <!-- Footer: Thank you & Company Signature -->
+                            <div class="mt-10 flex justify-between items-end text-xs font-sans">
+                                <div>
+                                    <p class="font-medium text-slate-700">Thank you</p>
+                                    <p contenteditable="true" id="sheet_company" oninput="onSheetDirectEdit('company', this.innerText)" class="doc-editable mt-6 font-bold text-sm text-slate-950" title="Click to edit Company Name">Grameen Media</p>
+                                </div>
+                                <div class="text-center">
+                                    <div class="w-36 border-b border-slate-600 mb-1"></div>
+                                    <span class="text-[10px] text-slate-500">Authorized Signature</span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Last Stacked Bill Box (No-Print) -->
+                <div id="lastGeneratedBox" class="hidden p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 no-print">
+                    <div class="flex items-start gap-2.5">
+                        <div class="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 flex items-center justify-center shrink-0 mt-0.5">
+                            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <span class="block text-xs font-bold text-indigo-900 dark:text-indigo-200">Added to Project Stack!</span>
+                            <p id="generatedFileName" class="text-[11px] text-indigo-700 dark:text-indigo-400 truncate mt-0.5">Bill #1048</p>
+                            <div class="mt-1.5 flex gap-2">
+                                <button type="button" onclick="openProjectStackDrawer()" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white inline-flex items-center gap-1 shadow-sm">
+                                    <span>📚 View Stack</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-slate-200 dark:border-slate-800/80 bg-white/50 dark:bg-slate-900/50 py-2.5 no-print">
+        <div class="max-w-[1760px] mx-auto px-4 text-center text-xs text-slate-400 dark:text-slate-500">
+            Biller &bull; Powered by FastAPI & DocxTemplate &bull; Live Bidirectional Document Studio
+        </div>
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Constants for board rates
+        const BOARD_RATES = {
+            "New Signboard (Horizontal)": 365,
+            "New Signboard (Vertical)": 270,
+            "Pana Change and Servicing": 88
+        };
+
+        // State
+        let boardRows = [
+            { w: 10, h: 4, q: 1, r: 365, desc: "New Signboard (Horizontal)", isCustomRate: false }
+        ];
+        let isQuickTextMode = false;
+        let isSyncingFromSheet = false;
+        let isFitHeight = true;
+        let customWordsOverride = null;
+        let customBrandOverride = null;
+        let customSubjectOverride = null;
+        let customCompanyOverride = null;
+        let currentZoom = 1.0;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            initProjectSystem();
+            renderBoardRows();
+            updateCalculations();
+
+            // Auto fit docx view to viewport height
+            setTimeout(() => {
+                fitToViewportHeight();
+            }, 60);
+
+            // Re-fit on window resize
+            window.addEventListener('resize', () => {
+                if (isFitHeight) {
+                    fitToViewportHeight();
+                }
+            });
+
+            const form = document.getElementById('billForm');
+
+            // Global Keydown Handler: Enter to submit, Arrow keys to jump
+            form.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    if (e.target.tagName.toLowerCase() === 'textarea' && e.shiftKey) {
+                        return;
+                    }
+                    e.preventDefault();
+                    triggerSubmitWithFeedback();
+                } else if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                    handleArrowNavigation(e);
+                }
+            });
+
+            // Live updates on form input changes
+            const liveInputs = ['bill_no', 'pr_no', 'showroom', 'address', 'mobile', 'brand', 'date'];
+            liveInputs.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', () => {
+                        updateCalculations();
+                        updateSheetFromForm();
+                    });
+                }
+            });
+        });
+
+        // -------------------------------------------------------------
+        // Viewport Height Auto-Fit & Zoom Controls
+        // -------------------------------------------------------------
+        function applyZoom() {
+            const sheet = document.getElementById('documentSheet');
+            const wrapper = document.getElementById('sheetWrapper');
+            if (!sheet) return;
+
+            sheet.style.transform = `scale(${currentZoom})`;
+
+            if (wrapper) {
+                wrapper.style.width = `${Math.round(sheet.offsetWidth * currentZoom)}px`;
+                wrapper.style.height = `${Math.round(sheet.offsetHeight * currentZoom)}px`;
+            }
+
+            const label = document.getElementById('zoomLevel');
+            if (label) label.textContent = `${Math.round(currentZoom * 100)}%`;
+        }
+
+        function fitToViewportHeight() {
+            const container = document.getElementById('sheetContainer');
+            const sheet = document.getElementById('documentSheet');
+            if (!container || !sheet) return;
+
+            // Reset transform to measure natural height
+            sheet.style.transform = 'none';
+            const containerH = container.clientHeight;
+            const containerW = container.clientWidth;
+            const sheetH = sheet.offsetHeight;
+            const sheetW = sheet.offsetWidth;
+
+            if (sheetH <= 0 || containerH <= 0) return;
+
+            // Padding inside container
+            const availH = containerH - 24;
+            const availW = containerW - 16;
+
+            const scaleH = availH / sheetH;
+            const scaleW = availW / sheetW;
+
+            // Target scale fits height (while ensuring width also fits)
+            let targetScale = Math.min(scaleH, scaleW);
+            targetScale = Math.max(0.35, Math.min(targetScale, 1.25));
+            targetScale = Math.round(targetScale * 100) / 100;
+
+            currentZoom = targetScale;
+            isFitHeight = true;
+            applyZoom();
+            updateFitButtonState();
+        }
+
+        function adjustZoom(delta) {
+            isFitHeight = false;
+            currentZoom = Math.min(Math.max(0.4, currentZoom + delta), 1.5);
+            currentZoom = Math.round(currentZoom * 100) / 100;
+            applyZoom();
+            updateFitButtonState();
+        }
+
+        function resetZoom() {
+            isFitHeight = false;
+            currentZoom = 1.0;
+            applyZoom();
+            updateFitButtonState();
+        }
+
+        function updateFitButtonState() {
+            const btn = document.getElementById('fitHeightBtn');
+            if (!btn) return;
+            if (isFitHeight) {
+                btn.classList.add('bg-brand-50', 'dark:bg-brand-950', 'text-brand-600', 'dark:text-brand-300', 'border-brand-300', 'dark:border-brand-800');
+            } else {
+                btn.classList.remove('bg-brand-50', 'dark:bg-brand-950', 'text-brand-600', 'dark:text-brand-300', 'border-brand-300', 'dark:border-brand-800');
+            }
+        }
+
+        // -------------------------------------------------------------
+        // Arrow Key Navigation System
+        // -------------------------------------------------------------
+        function isCursorAtEnd(input) {
+            try {
+                if (input.selectionStart !== undefined && input.selectionEnd !== undefined) {
+                    return input.selectionStart === input.value.length && input.selectionEnd === input.value.length;
+                }
+            } catch (e) {}
+            return true;
+        }
+
+        function isCursorAtStart(input) {
+            try {
+                if (input.selectionStart !== undefined && input.selectionEnd !== undefined) {
+                    return input.selectionStart === 0 && input.selectionEnd === 0;
+                }
+            } catch (e) {}
+            return true;
+        }
+
+        function getNavigationGrid() {
+            const grid = [];
+
+            // Row 0: Invoice Info
+            const r0 = [
+                document.getElementById('bill_no'),
+                document.getElementById('pr_no'),
+                document.getElementById('date')
+            ].filter(Boolean);
+            if (r0.length) grid.push(r0);
+
+            // Row 1: Brand & Showroom
+            const r1 = [
+                document.getElementById('brand'),
+                document.getElementById('showroom')
+            ].filter(Boolean);
+            if (r1.length) grid.push(r1);
+
+            // Row 2: Mobile & Address
+            const r2 = [
+                document.getElementById('mobile'),
+                document.getElementById('address')
+            ].filter(Boolean);
+            if (r2.length) grid.push(r2);
+
+            // Board Rows
+            if (!isQuickTextMode) {
+                boardRows.forEach((_, idx) => {
+                    const descEl = document.getElementById(`board_desc_${idx}`);
+                    if (descEl) grid.push([descEl]);
+
+                    const rowInputs = [
+                        document.getElementById(`board_w_${idx}`),
+                        document.getElementById(`board_h_${idx}`),
+                        document.getElementById(`board_q_${idx}`),
+                        document.getElementById(`board_r_${idx}`)
+                    ].filter(Boolean);
+                    if (rowInputs.length) grid.push(rowInputs);
+                });
+            } else {
+                const textSpec = document.getElementById('boards_specifications');
+                if (textSpec) grid.push([textSpec]);
+            }
+
+            // Submit Button
+            const rSubmit = [
+                document.getElementById('submitBtn')
+            ].filter(Boolean);
+            if (rSubmit.length) grid.push(rSubmit);
+
+            return grid;
+        }
+
+        function focusElement(el) {
+            if (!el) return;
+            el.focus();
+            if (el.tagName === 'INPUT' && typeof el.select === 'function') {
+                el.select();
+            }
+        }
+
+        function handleArrowNavigation(e) {
+            const currentEl = e.target;
+            if (!currentEl) return;
+            if (e.ctrlKey || e.metaKey) return;
+
+            const isText = (currentEl.tagName === 'INPUT' && (currentEl.type === 'text' || currentEl.type === 'date')) || currentEl.tagName === 'TEXTAREA';
+            const isSelect = currentEl.tagName === 'SELECT';
+
+            if (isSelect) {
+                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                    return;
+                }
+            }
+
+            if (isText) {
+                if (e.key === 'ArrowLeft' && !isCursorAtStart(currentEl)) {
+                    return;
+                }
+                if (e.key === 'ArrowRight' && !isCursorAtEnd(currentEl)) {
+                    return;
+                }
+            }
+
+            const grid = getNavigationGrid();
+            if (!grid.length) return;
+
+            let curRow = -1;
+            let curCol = -1;
+
+            for (let r = 0; r < grid.length; r++) {
+                const c = grid[r].indexOf(currentEl);
+                if (c !== -1) {
+                    curRow = r;
+                    curCol = c;
+                    break;
+                }
+            }
+
+            if (curRow === -1) {
+                focusElement(grid[0][0]);
+                return;
+            }
+
+            let targetEl = null;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (curRow + 1 < grid.length) {
+                    const nextRow = grid[curRow + 1];
+                    const targetCol = Math.min(curCol, nextRow.length - 1);
+                    targetEl = nextRow[targetCol];
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (curRow - 1 >= 0) {
+                    const prevRow = grid[curRow - 1];
+                    const targetCol = Math.min(curCol, prevRow.length - 1);
+                    targetEl = prevRow[targetCol];
+                }
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                if (curCol + 1 < grid[curRow].length) {
+                    targetEl = grid[curRow][curCol + 1];
+                } else if (curRow + 1 < grid.length) {
+                    targetEl = grid[curRow + 1][0];
+                }
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                if (curCol - 1 >= 0) {
+                    targetEl = grid[curRow][curCol - 1];
+                } else if (curRow - 1 >= 0) {
+                    const prevRow = grid[curRow - 1];
+                    targetEl = prevRow[prevRow.length - 1];
+                }
+            }
+
+            if (targetEl) {
+                focusElement(targetEl);
+            }
+        }
+
+        // -------------------------------------------------------------
+        // Theme Management
+        // -------------------------------------------------------------
+        function initTheme() {
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                document.getElementById('sunIcon').classList.remove('hidden');
+                document.getElementById('moonIcon').classList.add('hidden');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.getElementById('sunIcon').classList.add('hidden');
+                document.getElementById('moonIcon').classList.remove('hidden');
+            }
+        }
+
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.theme = isDark ? 'dark' : 'light';
+            document.getElementById('sunIcon').classList.toggle('hidden', !isDark);
+            document.getElementById('moonIcon').classList.toggle('hidden', isDark);
+        }
+
+        // -------------------------------------------------------------
+        // Board Rows & Dynamic Form Management
+        // -------------------------------------------------------------
+        function renderBoardRows() {
+            const container = document.getElementById('boardRows');
+            container.innerHTML = '';
+
+            boardRows.forEach((row, index) => {
+                const rowEl = document.createElement('div');
+                rowEl.className = 'p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 space-y-2.5';
+                
+                const autoRate = BOARD_RATES[row.desc] || 365;
+                const effectiveRate = (row.r && row.r > 0) ? row.r : autoRate;
+                const sft = ((row.w || 0) * (row.h || 0) * (row.q || 1)).toFixed(2);
+                const amnt = Math.round(sft * effectiveRate);
+
+                rowEl.innerHTML = `
+                    <div class="flex items-center justify-between pb-1.5 border-b border-slate-200/60 dark:border-slate-700/60 text-xs">
+                        <span class="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                            <span class="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-700 text-[10px] flex items-center justify-center font-mono">${index + 1}</span>
+                            Board #${index + 1}
+                        </span>
+                        <div class="flex items-center gap-3">
+                            <span class="font-mono text-slate-500 dark:text-slate-400">${sft} sft &bull; <strong class="text-slate-800 dark:text-slate-200">৳ ${amnt.toLocaleString()}</strong></span>
+                            ${boardRows.length > 1 ? `
+                                <button type="button" onclick="removeBoardRow(${index})" class="text-slate-400 hover:text-rose-500 p-1 transition-colors" title="Delete Board">
+                                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+
+                    <!-- Description Dropdown Choice Field -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label for="board_desc_${index}" class="block text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                                Board Type / Description <span class="text-rose-500">*</span>
+                            </label>
+                            <span class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60">
+                                Rate: ৳ ${autoRate}
+                            </span>
+                        </div>
+                        <select id="board_desc_${index}"
+                                onchange="onBoardDescChange(${index}, this.value)"
+                                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            <option value="New Signboard (Horizontal)" ${row.desc === "New Signboard (Horizontal)" ? "selected" : ""}>New Signboard (Horizontal) — ৳ 365</option>
+                            <option value="New Signboard (Vertical)" ${row.desc === "New Signboard (Vertical)" ? "selected" : ""}>New Signboard (Vertical) — ৳ 270</option>
+                            <option value="Pana Change and Servicing" ${row.desc === "Pana Change and Servicing" ? "selected" : ""}>Pana Change and Servicing — ৳ 88</option>
+                        </select>
+                    </div>
+
+                    <!-- Dimensions & Rate Grid (4 columns) -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <div>
+                            <label for="board_w_${index}" class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">Width (ft)</label>
+                            <input type="number" step="0.1" id="board_w_${index}" value="${row.w}"
+                                   oninput="updateBoardDimension(${index}, 'w', this.value)"
+                                   class="w-full px-2 py-1 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono font-medium focus:ring-1 focus:ring-brand-500 focus:outline-none" />
+                        </div>
+                        <div>
+                            <label for="board_h_${index}" class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">Height (ft)</label>
+                            <input type="number" step="0.1" id="board_h_${index}" value="${row.h}"
+                                   oninput="updateBoardDimension(${index}, 'h', this.value)"
+                                   class="w-full px-2 py-1 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono font-medium focus:ring-1 focus:ring-brand-500 focus:outline-none" />
+                        </div>
+                        <div>
+                            <label for="board_q_${index}" class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">Qty</label>
+                            <input type="number" step="1" min="1" id="board_q_${index}" value="${row.q}"
+                                   oninput="updateBoardDimension(${index}, 'q', this.value)"
+                                   class="w-full px-2 py-1 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono font-medium focus:ring-1 focus:ring-brand-500 focus:outline-none" />
+                        </div>
+                        <div>
+                            <label for="board_r_${index}" class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-0.5">Rate (৳)</label>
+                            <input type="number" step="1" id="board_r_${index}" value="${row.isCustomRate ? row.r : autoRate}"
+                                   placeholder="${autoRate}"
+                                   oninput="onBoardRateInput(${index}, this.value)"
+                                   onblur="onBoardRateBlur(${index}, this)"
+                                   class="w-full px-2 py-1 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono font-medium focus:ring-1 focus:ring-brand-500 focus:outline-none" />
+                        </div>
+                    </div>
+                `;
+                container.appendChild(rowEl);
+            });
+
+            syncBoardsToJson();
+            updateSheetFromForm();
+
+            // Re-fit to viewport height if fit mode is active
+            if (isFitHeight) {
+                setTimeout(fitToViewportHeight, 40);
+            }
+        }
+
+        function updateBoardDimension(index, field, value) {
+            boardRows[index][field] = parseFloat(value) || 0;
+            syncBoardsToJson();
+            updateCalculations();
+            updateSheetFromForm();
+        }
+
+        function onBoardDescChange(index, newDesc) {
+            boardRows[index].desc = newDesc;
+            const autoRate = BOARD_RATES[newDesc] || 365;
+            boardRows[index].r = autoRate;
+            boardRows[index].isCustomRate = false;
+
+            renderBoardRows();
+            updateCalculations();
+            updateSheetFromForm();
+        }
+
+        function onBoardRateInput(index, val) {
+            const trimmed = val.trim();
+            if (trimmed === "") {
+                const autoRate = BOARD_RATES[boardRows[index].desc] || 365;
+                boardRows[index].r = autoRate;
+                boardRows[index].isCustomRate = false;
+            } else {
+                boardRows[index].r = parseFloat(trimmed) || 0;
+                boardRows[index].isCustomRate = true;
+            }
+            syncBoardsToJson();
+            updateCalculations();
+            updateSheetFromForm();
+        }
+
+        function onBoardRateBlur(index, inputEl) {
+            if (inputEl.value.trim() === "") {
+                const autoRate = BOARD_RATES[boardRows[index].desc] || 365;
+                inputEl.value = autoRate;
+                boardRows[index].r = autoRate;
+                boardRows[index].isCustomRate = false;
+                syncBoardsToJson();
+                updateCalculations();
+                updateSheetFromForm();
+            }
+        }
+
+        function addBoardRow() {
+            boardRows.push({
+                w: 10,
+                h: 4,
+                q: 1,
+                r: 365,
+                desc: "New Signboard (Horizontal)",
+                isCustomRate: false
+            });
+            renderBoardRows();
+            updateCalculations();
+            updateSheetFromForm();
+        }
+
+        function removeBoardRow(index) {
+            if (boardRows.length > 1) {
+                boardRows.splice(index, 1);
+                renderBoardRows();
+                updateCalculations();
+                updateSheetFromForm();
+            }
+        }
+
+        function syncBoardsToJson() {
+            const jsonField = document.getElementById('boards_json');
+            if (jsonField) {
+                jsonField.value = JSON.stringify(boardRows);
+            }
+        }
+
+        function toggleSpecInputMode() {
+            isQuickTextMode = !isQuickTextMode;
+            const structContainer = document.getElementById('structuredBoardsContainer');
+            const quickContainer = document.getElementById('quickTextContainer');
+            const modeLabel = document.getElementById('specModeLabel');
+
+            if (isQuickTextMode) {
+                structContainer.classList.add('hidden');
+                quickContainer.classList.remove('hidden');
+                modeLabel.textContent = "Switch to Table";
+                
+                const textarea = document.getElementById('boards_specifications');
+                if (!textarea.value.trim()) {
+                    textarea.value = boardRows.map(r => `${r.w} x ${r.h}, ${r.q}, ${r.r || (BOARD_RATES[r.desc] || 365)}`).join('\n');
+                }
+            } else {
+                parseTextToRows();
+                quickContainer.classList.add('hidden');
+                structContainer.classList.remove('hidden');
+                modeLabel.textContent = "Quick Text Mode";
+            }
+        }
+
+        function parseTextToRows() {
+            const text = document.getElementById('boards_specifications').value;
+            if (!text.trim()) return;
+
+            const lines = text.trim().split('\n');
+            const parsed = [];
+
+            lines.forEach(line => {
+                const nums = line.match(/[-+]?(?:\d*\.\d+|\d+)/g);
+                let desc = "New Signboard (Horizontal)";
+                const l = line.toLowerCase();
+                if (l.includes("vertical")) {
+                    desc = "New Signboard (Vertical)";
+                } else if (l.includes("pana") || l.includes("servicing")) {
+                    desc = "Pana Change and Servicing";
+                }
+
+                const autoRate = BOARD_RATES[desc] || 365;
+
+                if (nums && nums.length >= 2) {
+                    const w = parseFloat(nums[0]) || 0;
+                    const h = parseFloat(nums[1]) || 0;
+                    const q = nums.length >= 3 ? parseInt(nums[2]) || 1 : 1;
+                    const r = nums.length >= 4 ? parseFloat(nums[3]) || autoRate : autoRate;
+                    parsed.push({ w, h, q, r, desc, isCustomRate: (nums.length >= 4 && parseFloat(nums[3]) !== autoRate) });
+                }
+            });
+
+            if (parsed.length > 0) {
+                boardRows = parsed;
+                renderBoardRows();
+                updateCalculations();
+                updateSheetFromForm();
+                showToast("Specifications updated from text!", "info");
+            }
+        }
+
+        function handleBrandChange() {
+            const brandSelect = document.getElementById('brand');
+            const customInput = document.getElementById('customBrandInput');
+            if (brandSelect.value === 'custom') {
+                customInput.classList.remove('hidden');
+                customInput.focus();
+            } else {
+                customInput.classList.add('hidden');
+                customBrandOverride = null;
+            }
+            updateCalculations();
+            updateSheetFromForm();
+        }
+
+        function getBrandDisplay() {
+            if (customBrandOverride) return customBrandOverride;
+            const brandSelect = document.getElementById('brand');
+            const customInput = document.getElementById('customBrandInput');
+            if (brandSelect.value === 'custom' && customInput.value.trim()) {
+                return customInput.value.trim();
+            }
+            const brandMap = {
+                'p': 'Walton Hi-Tech Industries (PLC) (PLAZA)',
+                'm': 'Walton Digi-Tech Mobile (MOB)',
+                'h': 'Walton Hi-Tech Industries (PLC) (HAP)',
+                'e': 'Walton Hi-Tech Industries (PLC) (EAP)',
+                'c': 'Walton Hi-Tech Industries (PLC) (COM)'
+            };
+            return brandMap[brandSelect.value] || 'Walton Hi-Tech Industries (PLC) (PLAZA)';
+        }
+
+        function formatDisplayDate(dateStr) {
+            if (!dateStr) return new Date().toLocaleDateString('en-GB').replace(/\//g, '.');
+            if (dateStr.includes('-')) {
+                const parts = dateStr.split('-');
+                if (parts.length === 3) return `${parts[2]}.${parts[1]}.${parts[0]}`;
+            }
+            return dateStr;
+        }
+
+        // -------------------------------------------------------------
+        // Live Calculations & Words Fetch
+        // -------------------------------------------------------------
+        async function updateCalculations() {
+            let totalSft = 0;
+            let sub1 = 0;
+
+            boardRows.forEach(row => {
+                const autoRate = BOARD_RATES[row.desc] || 365;
+                const effectiveRate = (row.r && row.r > 0) ? row.r : autoRate;
+                const sft = (row.w || 0) * (row.h || 0) * (row.q || 1);
+                const amnt = Math.round(sft * effectiveRate);
+                totalSft += sft;
+                sub1 += amnt;
+            });
+
+            const vat = Math.round(sub1 * 0.15);
+            const sub2 = sub1 + vat;
+            const tds = Math.round(sub1 * 0.05);
+            const total = sub1 - tds;
+
+            // Update Sheet Footer totals directly
+            updateSheetFooter(sub1, vat, sub2, tds, total);
+
+            // Fetch words conversion from API if not overridden by direct edit
+            if (!customWordsOverride) {
+                fetchWordsConversion(total);
+            }
+        }
+
+        let wordsDebounceTimer;
+        function fetchWordsConversion(total) {
+            clearTimeout(wordsDebounceTimer);
+            wordsDebounceTimer = setTimeout(async () => {
+                try {
+                    const payload = {
+                        bill_no: document.getElementById('bill_no').value || 'DRAFT',
+                        pr_no: document.getElementById('pr_no').value || 'DRAFT',
+                        brand: document.getElementById('brand').value === 'custom' ? document.getElementById('customBrandInput').value : document.getElementById('brand').value,
+                        showroom: document.getElementById('showroom').value || 'Showroom',
+                        address: document.getElementById('address').value || 'Address',
+                        mobile: document.getElementById('mobile').value || 'Mobile',
+                        boards: boardRows.map(b => ({
+                            w: b.w,
+                            h: b.h,
+                            q: b.q,
+                            r: (b.r && b.r > 0) ? b.r : (BOARD_RATES[b.desc] || 365),
+                            description: b.desc
+                        }))
+                    };
+
+                    const res = await fetch('/api/calculate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.success && data.summary) {
+                            const wordsText = `${data.summary.words} Taka Only.`;
+                            const sheetWordsEl = document.getElementById('sheet_words');
+                            if (sheetWordsEl && !customWordsOverride) {
+                                sheetWordsEl.textContent = wordsText;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.log('Words preview fetch error:', e);
+                }
+            }, 250);
+        }
+
+        // -------------------------------------------------------------
+        // Live Document Sheet Synchronization (Form -> Sheet)
+        // -------------------------------------------------------------
+        function updateSheetFromForm() {
+            if (isSyncingFromSheet) return;
+
+            const billNo = document.getElementById('bill_no').value || '1042';
+            const prNo = document.getElementById('pr_no').value || 'PR-8902';
+            const showroom = document.getElementById('showroom').value || 'Mirpur Plaza';
+            const address = document.getElementById('address').value || 'Sector 3, Uttara, Dhaka';
+            const mobile = document.getElementById('mobile').value || '01700-000000';
+            const dateVal = document.getElementById('date').value;
+
+            const elBno = document.getElementById('sheet_bill_no');
+            if (elBno && document.activeElement !== elBno) elBno.textContent = billNo;
+
+            const elPr = document.getElementById('sheet_pr_no');
+            if (elPr && document.activeElement !== elPr) elPr.textContent = prNo;
+
+            const elDate = document.getElementById('sheet_date');
+            if (elDate && document.activeElement !== elDate) elDate.textContent = formatDisplayDate(dateVal);
+
+            const elBrand = document.getElementById('sheet_brand');
+            if (elBrand && document.activeElement !== elBrand) elBrand.textContent = getBrandDisplay();
+
+            const elShowroom = document.getElementById('sheet_showroom');
+            if (elShowroom && document.activeElement !== elShowroom) elShowroom.textContent = showroom;
+
+            const elAddress = document.getElementById('sheet_address');
+            if (elAddress && document.activeElement !== elAddress) elAddress.textContent = address;
+
+            const elMobile = document.getElementById('sheet_mobile');
+            if (elMobile && document.activeElement !== elMobile) elMobile.textContent = mobile;
+
+            // Render Sheet Table Body (only if user is not actively editing inside table)
+            const activeEl = document.activeElement;
+            const isEditingTable = activeEl && activeEl.closest('#sheetTableBody');
+            if (!isEditingTable) {
+                renderSheetTableBody();
+            }
+        }
+
+        function renderSheetTableBody() {
+            const tbody = document.getElementById('sheetTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            boardRows.forEach((row, i) => {
+                const autoRate = BOARD_RATES[row.desc] || 365;
+                const effectiveRate = (row.r && row.r > 0) ? row.r : autoRate;
+                const sft = ((row.w || 0) * (row.h || 0) * (row.q || 1)).toFixed(2);
+                const amnt = Math.round(sft * effectiveRate);
+
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-slate-900 hover:bg-slate-50/80 transition-colors';
+                tr.innerHTML = `
+                    <td class="border border-slate-900 px-2 py-1 text-center font-mono font-bold">${i + 1}</td>
+                    <td class="border border-slate-900 px-3 py-1 font-medium">
+                        <span contenteditable="true" oninput="onSheetTableCellInput(${i}, 'desc', this.innerText)" class="doc-editable block" title="Click to edit Particle">${row.desc}</span>
+                    </td>
+                    <td class="border border-slate-900 px-2 py-1 text-center font-mono">
+                        <span contenteditable="true" oninput="onSheetTableCellInput(${i}, 'w', this.innerText)" class="doc-editable inline-block" title="Click to edit Width">${row.w}</span>
+                    </td>
+                    <td class="border border-slate-900 px-2 py-1 text-center font-mono">
+                        <span contenteditable="true" oninput="onSheetTableCellInput(${i}, 'h', this.innerText)" class="doc-editable inline-block" title="Click to edit Height">${row.h}</span>
+                    </td>
+                    <td class="border border-slate-900 px-2 py-1 text-center font-mono">
+                        <span contenteditable="true" oninput="onSheetTableCellInput(${i}, 'q', this.innerText)" class="doc-editable inline-block" title="Click to edit Qty">${row.q}</span>
+                    </td>
+                    <td class="border border-slate-900 px-2 py-1 text-center font-mono font-bold">${sft}</td>
+                    <td class="border border-slate-900 px-2 py-1 text-center font-mono">
+                        <span contenteditable="true" oninput="onSheetTableCellInput(${i}, 'r', this.innerText)" class="doc-editable inline-block font-bold" title="Click to edit Rate">${effectiveRate}</span>
+                    </td>
+                    <td class="border border-slate-900 px-3 py-1 text-right font-mono font-bold text-slate-950">${amnt.toLocaleString()}/-</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateSheetFooter(sub1 = 0, vat = 0, sub2 = 0, tds = 0, total = 0) {
+            const tfoot = document.getElementById('sheetTableFoot');
+            if (!tfoot) return;
+
+            tfoot.innerHTML = `
+                <tr class="border-t-2 border-slate-900 bg-slate-50/50">
+                    <td class="border border-slate-900 px-2 py-1"></td>
+                    <td colspan="6" class="border border-slate-900 px-3 py-1 text-right font-bold">Total Amount =</td>
+                    <td class="border border-slate-900 px-3 py-1 text-right font-mono font-bold">${sub1.toLocaleString()}/-</td>
+                </tr>
+                <tr>
+                    <td class="border border-slate-900 px-2 py-1"></td>
+                    <td colspan="6" class="border border-slate-900 px-3 py-1 text-right font-bold">(+)Vat@15% =</td>
+                    <td class="border border-slate-900 px-3 py-1 text-right font-mono">${vat.toLocaleString()}/-</td>
+                </tr>
+                <tr>
+                    <td class="border border-slate-900 px-2 py-1"></td>
+                    <td colspan="6" class="border border-slate-900 px-3 py-1 text-right font-bold">Sub-total =</td>
+                    <td class="border border-slate-900 px-3 py-1 text-right font-mono">${sub2.toLocaleString()}/-</td>
+                </tr>
+                <tr>
+                    <td class="border border-slate-900 px-2 py-1"></td>
+                    <td colspan="6" class="border border-slate-900 px-3 py-1 text-right font-bold">(-)Vat@15% =</td>
+                    <td class="border border-slate-900 px-3 py-1 text-right font-mono">${vat.toLocaleString()}/-</td>
+                </tr>
+                <tr>
+                    <td class="border border-slate-900 px-2 py-1"></td>
+                    <td colspan="6" class="border border-slate-900 px-3 py-1 text-right font-bold">Sub-total =</td>
+                    <td class="border border-slate-900 px-3 py-1 text-right font-mono">${sub1.toLocaleString()}/-</td>
+                </tr>
+                <tr>
+                    <td class="border border-slate-900 px-2 py-1"></td>
+                    <td colspan="6" class="border border-slate-900 px-3 py-1 text-right font-bold">(-)TDS@5% =</td>
+                    <td class="border border-slate-900 px-3 py-1 text-right font-mono text-rose-600">${tds.toLocaleString()}/-</td>
+                </tr>
+                <tr class="bg-slate-100 font-extrabold text-sm border-t-2 border-slate-900">
+                    <td class="border border-slate-900 px-2 py-1.5"></td>
+                    <td colspan="6" class="border border-slate-900 px-3 py-1.5 text-right uppercase tracking-wider font-bold">Grand Total =</td>
+                    <td class="border border-slate-900 px-3 py-1.5 text-right font-mono font-black text-slate-950">${total.toLocaleString()}/-</td>
+                </tr>
+            `;
+        }
+
+        // -------------------------------------------------------------
+        // Bidirectional Sync: Sheet -> Form
+        // -------------------------------------------------------------
+        function onSheetDirectEdit(field, text) {
+            isSyncingFromSheet = true;
+            const trimmed = text.trim();
+
+            if (field === 'bill_no') {
+                const el = document.getElementById('bill_no');
+                if (el) el.value = trimmed;
+            } else if (field === 'pr_no') {
+                const el = document.getElementById('pr_no');
+                if (el) el.value = trimmed;
+            } else if (field === 'showroom') {
+                const el = document.getElementById('showroom');
+                if (el) el.value = trimmed;
+            } else if (field === 'address') {
+                const el = document.getElementById('address');
+                if (el) el.value = trimmed;
+            } else if (field === 'mobile') {
+                const el = document.getElementById('mobile');
+                if (el) el.value = trimmed;
+            } else if (field === 'date') {
+                // Keep direct date edits
+            } else if (field === 'brand_text') {
+                customBrandOverride = trimmed;
+            } else if (field === 'subject') {
+                customSubjectOverride = trimmed;
+            } else if (field === 'company') {
+                customCompanyOverride = trimmed;
+            }
+
+            updateCalculations();
+            isSyncingFromSheet = false;
+        }
+
+        function onSheetTableCellInput(index, field, value) {
+            isSyncingFromSheet = true;
+            const trimmed = value.trim();
+
+            if (field === 'desc') {
+                boardRows[index].desc = trimmed;
+                const descSelect = document.getElementById(`board_desc_${index}`);
+                if (descSelect) {
+                    for (let opt of descSelect.options) {
+                        if (opt.value.toLowerCase() === trimmed.toLowerCase()) {
+                            descSelect.value = opt.value;
+                            break;
+                        }
+                    }
+                }
+            } else if (field === 'r') {
+                const parsedRate = parseFloat(trimmed) || 0;
+                boardRows[index].r = parsedRate;
+                boardRows[index].isCustomRate = true;
+                const rInput = document.getElementById(`board_r_${index}`);
+                if (rInput) rInput.value = parsedRate;
+            } else if (field === 'w' || field === 'h') {
+                const parsed = parseFloat(trimmed) || 0;
+                boardRows[index][field] = parsed;
+                const formInput = document.getElementById(`board_${field}_${index}`);
+                if (formInput) formInput.value = parsed;
+            } else if (field === 'q') {
+                const parsed = parseInt(trimmed) || 1;
+                boardRows[index].q = parsed;
+                const formInput = document.getElementById(`board_q_${index}`);
+                if (formInput) formInput.value = parsed;
+            }
+
+            syncBoardsToJson();
+            updateCalculations();
+            isSyncingFromSheet = false;
+        }
+
+        function onSheetWordsEdit(text) {
+            customWordsOverride = text.trim();
+        }
+
+        // -------------------------------------------------------------
+        // Form Submission & Triggering
+        // -------------------------------------------------------------
+        function triggerSubmitWithFeedback() {
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.classList.add('ring-4', 'ring-brand-300', 'scale-95');
+            setTimeout(() => {
+                submitBtn.classList.remove('ring-4', 'ring-brand-300', 'scale-95');
+            }, 200);
+
+            const form = document.getElementById('billForm');
+            if (form.reportValidity()) {
+                form.requestSubmit();
+            }
+        }
+
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+
+            // Pull values directly from sheet or form to ensure all direct edits are honored
+            const billNo = (document.getElementById('sheet_bill_no')?.innerText || document.getElementById('bill_no').value).trim();
+            const prNo = (document.getElementById('sheet_pr_no')?.innerText || document.getElementById('pr_no').value).trim();
+            const showroom = (document.getElementById('sheet_showroom')?.innerText || document.getElementById('showroom').value).trim();
+            const address = (document.getElementById('sheet_address')?.innerText || document.getElementById('address').value).trim();
+            const mobile = (document.getElementById('sheet_mobile')?.innerText || document.getElementById('mobile').value).trim();
+            const brandVal = customBrandOverride || (document.getElementById('brand').value === 'custom' 
+                ? document.getElementById('customBrandInput').value.trim() 
+                : document.getElementById('brand').value);
+
+            if (!billNo || !prNo || !showroom) {
+                showToast("Please fill in all required fields (Bill No, PR No, Showroom).", "error");
+                return;
+            }
+
+            syncBoardsToJson();
+
+            const submitBtn = document.getElementById('submitBtn');
+            const submitSpinner = document.getElementById('submitSpinner');
+            const submitIcon = document.getElementById('submitIcon');
+            const submitText = document.getElementById('submitText');
+
+            submitBtn.disabled = true;
+            submitSpinner.classList.remove('hidden');
+            submitIcon.classList.add('hidden');
+            submitText.textContent = "Adding to Stack...";
+
+            try {
+                const payload = {
+                    bill_no: billNo,
+                    pr_no: prNo,
+                    brand: brandVal,
+                    showroom: showroom,
+                    address: address,
+                    mobile: mobile,
+                    date: document.getElementById('sheet_date')?.innerText.trim() || document.getElementById('date').value,
+                    words: customWordsOverride || document.getElementById('sheet_words')?.innerText.trim(),
+                    subject: customSubjectOverride || document.getElementById('sheet_subject')?.innerText.trim(),
+                    project_id: currentProjectId,
+                    boards: boardRows.map(b => ({
+                        w: b.w,
+                        h: b.h,
+                        q: b.q,
+                        r: (b.r && b.r > 0) ? b.r : (BOARD_RATES[b.desc] || 365),
+                        description: b.desc
+                    }))
+                };
+
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Refresh project stack counter and drawer
+                    await refreshProjectStack();
+
+                    const count = data.project?.bills_count || (document.getElementById('stackCountBadge')?.textContent || "");
+                    showToast(`✅ Bill #${billNo} added to stack! (${count} bill${count === 1 ? '' : 's'} in project)`, "success");
+
+                    const lastBox = document.getElementById('lastGeneratedBox');
+                    const fileNameEl = document.getElementById('generatedFileName');
+                    if (fileNameEl) fileNameEl.textContent = `Bill #${billNo} • ${showroom}`;
+                    if (lastBox) lastBox.classList.remove('hidden');
+                } else {
+                    showToast(data.detail || data.error || "Failed to add bill to stack.", "error");
+                }
+            } catch (err) {
+                console.error(err);
+                showToast("Network error while adding bill to stack. Please try again.", "error");
+            } finally {
+                submitBtn.disabled = false;
+                submitSpinner.classList.add('hidden');
+                submitIcon.classList.remove('hidden');
+                submitText.textContent = "Add to Stack";
+            }
+        }
+
+        // Demo Data Loader
+        function fillDemoData() {
+            customWordsOverride = null;
+            customBrandOverride = null;
+            customSubjectOverride = null;
+
+            document.getElementById('bill_no').value = '1048';
+            document.getElementById('pr_no').value = 'PR-77421';
+            document.getElementById('brand').value = 'p';
+            handleBrandChange();
+            document.getElementById('showroom').value = 'Mirpur Plaza Showroom';
+            document.getElementById('mobile').value = '01712-345678';
+            document.getElementById('address').value = 'Plot 18, Road 2, Mirpur-10, Dhaka';
+
+            boardRows = [
+                { w: 12.0, h: 4.5, q: 2, r: 365, desc: "New Signboard (Horizontal)", isCustomRate: false },
+                { w: 8.0, h: 3.0, q: 1, r: 88, desc: "Pana Change and Servicing", isCustomRate: false }
+            ];
+
+            renderBoardRows();
+            updateCalculations();
+            updateSheetFromForm();
+            if (isFitHeight) {
+                setTimeout(fitToViewportHeight, 40);
+            }
+            showToast("Sample data loaded! Form and document sheet updated.", "info");
+        }
+
+        // Reset Form
+        function resetForm() {
+            customWordsOverride = null;
+            customBrandOverride = null;
+            customSubjectOverride = null;
+            document.getElementById('billForm').reset();
+            boardRows = [{ w: 10, h: 4, q: 1, r: 365, desc: "New Signboard (Horizontal)", isCustomRate: false }];
+            renderBoardRows();
+            updateCalculations();
+            updateSheetFromForm();
+            if (isFitHeight) {
+                setTimeout(fitToViewportHeight, 40);
+            }
+            const lastBox = document.getElementById('lastGeneratedBox');
+            if (lastBox) lastBox.classList.add('hidden');
+            showToast("Form and document sheet reset.", "info");
+        }
+
+        // Toast Helper
+        function showToast(message, type = "info") {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            const bgClass = type === 'success' 
+                ? 'bg-emerald-600 text-white' 
+                : (type === 'error' ? 'bg-rose-600 text-white' : 'bg-slate-800 text-white');
+
+            toast.className = `${bgClass} px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 text-xs font-semibold pointer-events-auto transform translate-y-2 opacity-0 transition-all duration-300`;
+            toast.innerHTML = `<span>${message}</span>`;
+
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-x-full');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // -------------------------------------------------------------
+        // AI Workorder Batch Scanner System (Gemini Vision)
+        // -------------------------------------------------------------
+        let selectedScanFiles = [];
+        let isScanningInProgress = false;
+        let isBatchFinished = false;
+
+        function openScanModal() {
+            const modal = document.getElementById('scanModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
+            }
+            const modalProj = document.getElementById('modalProjectName');
+            if (modalProj) {
+                const curr = allProjects.find(p => p.id === currentProjectId);
+                modalProj.textContent = curr ? curr.name : "Default Project";
+            }
+            renderScanQueue();
+        }
+
+        function closeScanModal() {
+            if (isScanningInProgress) {
+                if (!confirm("Batch scanning is in progress. Are you sure you want to close?")) return;
+            }
+            const modal = document.getElementById('scanModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+            }
+        }
+
+        function triggerFileInput() {
+            if (isScanningInProgress) return;
+            const fileInput = document.getElementById('scanFileInput');
+            if (fileInput) fileInput.click();
+        }
+
+        function handleScanFileSelect(event) {
+            const files = Array.from(event.target.files || []).filter(f => f.type.startsWith('image/'));
+            if (files.length > 0) {
+                addFilesToQueue(files);
+            }
+            event.target.value = '';
+        }
+
+        function handleScanDragOver(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const dropzone = document.getElementById('scanDropzone');
+            if (dropzone) {
+                dropzone.classList.add('border-indigo-500', 'bg-indigo-50/40', 'dark:bg-indigo-950/40');
+            }
+        }
+
+        function handleScanDragLeave(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const dropzone = document.getElementById('scanDropzone');
+            if (dropzone) {
+                dropzone.classList.remove('border-indigo-500', 'bg-indigo-50/40', 'dark:bg-indigo-950/40');
+            }
+        }
+
+        function handleScanDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const dropzone = document.getElementById('scanDropzone');
+            if (dropzone) {
+                dropzone.classList.remove('border-indigo-500', 'bg-indigo-50/40', 'dark:bg-indigo-950/40');
+            }
+            const files = Array.from(event.dataTransfer.files || []).filter(f => f.type.startsWith('image/'));
+            if (files.length > 0) {
+                addFilesToQueue(files);
+            }
+        }
+
+        function addFilesToQueue(files) {
+            isBatchFinished = false;
+            const successBox = document.getElementById('batchSuccessSummaryBox');
+            if (successBox) successBox.classList.add('hidden');
+
+            files.forEach(f => {
+                const item = {
+                    file: f,
+                    name: f.name,
+                    size: formatFileSize(f.size),
+                    previewUrl: URL.createObjectURL(f),
+                    status: 'pending',
+                    result: null,
+                    error: null
+                };
+                selectedScanFiles.push(item);
+            });
+
+            renderScanQueue();
+        }
+
+        async function useSampleBillPhoto() {
+            try {
+                const res = await fetch('/static/bill.jpeg');
+                if (!res.ok) throw new Error("Could not load sample bill.jpeg");
+                const blob = await res.blob();
+                const file = new File([blob], "bill.jpeg", { type: "image/jpeg" });
+                addFilesToQueue([file]);
+            } catch (e) {
+                console.error(e);
+                showToast("Could not load sample bill.jpeg from server.", "error");
+            }
+        }
+
+        function clearScanQueue() {
+            if (isScanningInProgress) return;
+            selectedScanFiles = [];
+            isBatchFinished = false;
+            const progressBox = document.getElementById('batchProgressContainer');
+            if (progressBox) progressBox.classList.add('hidden');
+            const successBox = document.getElementById('batchSuccessSummaryBox');
+            if (successBox) successBox.classList.add('hidden');
+            renderScanQueue();
+        }
+
+        function removeScanQueueItem(index) {
+            if (isScanningInProgress) return;
+            selectedScanFiles.splice(index, 1);
+            renderScanQueue();
+        }
+
+        function formatFileSize(bytes) {
+            if (!bytes || bytes <= 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function renderScanQueue() {
+            const queueContainer = document.getElementById('batchQueueContainer');
+            const toolbar = document.getElementById('batchToolbar');
+            const sampleAction = document.getElementById('quickSampleAction');
+            const badge = document.getElementById('batchCountBadge');
+            const startBtn = document.getElementById('startBatchScanBtn');
+            const startBtnText = document.getElementById('startBatchScanBtnText');
+
+            const count = selectedScanFiles.length;
+
+            if (count === 0) {
+                if (toolbar) toolbar.classList.add('hidden');
+                if (queueContainer) queueContainer.classList.add('hidden');
+                if (sampleAction) sampleAction.classList.remove('hidden');
+                if (startBtn) startBtn.disabled = true;
+                if (startBtnText) startBtnText.textContent = "Select Photos to Scan";
+                return;
+            }
+
+            if (toolbar) toolbar.classList.remove('hidden');
+            if (queueContainer) queueContainer.classList.remove('hidden');
+            if (sampleAction) sampleAction.classList.add('hidden');
+            if (badge) badge.textContent = `${count} Photo${count === 1 ? '' : 's'} Ready`;
+
+            if (startBtn) {
+                startBtn.disabled = isScanningInProgress;
+                if (!isScanningInProgress) {
+                    if (isBatchFinished) {
+                        startBtnText.textContent = `Batch Finished (${count} Bills)`;
+                    } else {
+                        startBtnText.textContent = `🚀 Scan & Add All to Stack (${count})`;
+                    }
+                }
+            }
+
+            if (!queueContainer) return;
+
+            let html = '';
+            selectedScanFiles.forEach((item, idx) => {
+                let statusBadge = '';
+                let borderClass = 'border-slate-200 dark:border-slate-800';
+
+                if (item.status === 'pending') {
+                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">⏳ Pending</span>`;
+                } else if (item.status === 'scanning') {
+                    borderClass = 'border-indigo-400 dark:border-indigo-600 ring-2 ring-indigo-400/20';
+                    statusBadge = `
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 flex items-center gap-1.5 animate-pulse">
+                            <span class="w-2 h-2 rounded-full bg-indigo-600 animate-ping"></span>
+                            AI Scanning...
+                        </span>
+                    `;
+                } else if (item.status === 'done') {
+                    borderClass = 'border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/30 dark:bg-emerald-950/20';
+                    const bno = item.result?.bill_no || 'Bill';
+                    const showr = item.result?.showroom || '';
+                    const amnt = item.result?.amount ? ` • ৳ ${item.result.amount.toLocaleString()}` : '';
+                    statusBadge = `
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 flex items-center gap-1">
+                            <svg class="w-3 h-3 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            Stacked: #${bno} (${showr}${amnt})
+                        </span>
+                    `;
+                } else if (item.status === 'error') {
+                    borderClass = 'border-rose-300 dark:border-rose-800/80 bg-rose-50/30 dark:bg-rose-950/20';
+                    statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 truncate max-w-[200px]" title="${item.error || 'Error'}">❌ ${item.error || 'Failed'}</span>`;
+                }
+
+                html += `
+                    <div class="p-2.5 rounded-2xl border ${borderClass} bg-white dark:bg-slate-800/90 flex items-center justify-between gap-3 transition-all">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <img src="${item.previewUrl}" alt="Thumbnail" class="w-10 h-10 object-cover rounded-xl border border-slate-200 dark:border-slate-700 shrink-0 bg-slate-100" />
+                            <div class="min-w-0">
+                                <p class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">${item.name}</p>
+                                <p class="text-[10px] text-slate-400 font-mono">${item.size}</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2 shrink-0">
+                            ${statusBadge}
+                            ${!isScanningInProgress && item.status !== 'done' ? `
+                                <button type="button" onclick="removeScanQueueItem(${idx})" class="p-1 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="Remove">
+                                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            queueContainer.innerHTML = html;
+        }
+
+        async function startBatchScanning() {
+            if (isScanningInProgress) return;
+            if (selectedScanFiles.length === 0) {
+                showToast("Please choose workorder photos to scan.", "error");
+                return;
+            }
+
+            isScanningInProgress = true;
+            isBatchFinished = false;
+
+            const startBtn = document.getElementById('startBatchScanBtn');
+            const startBtnText = document.getElementById('startBatchScanBtnText');
+            const progressContainer = document.getElementById('batchProgressContainer');
+            const progressBar = document.getElementById('batchProgressBar');
+            const progressText = document.getElementById('batchProgressStatusText');
+            const progressPct = document.getElementById('batchProgressPercentage');
+            const successBox = document.getElementById('batchSuccessSummaryBox');
+
+            if (successBox) successBox.classList.add('hidden');
+            if (progressContainer) progressContainer.classList.remove('hidden');
+
+            const total = selectedScanFiles.length;
+            let successCount = 0;
+
+            const startInputVal = document.getElementById('batchStartBillInput')?.value.trim();
+            let currentBillNo = startInputVal && !isNaN(parseInt(startInputVal)) ? parseInt(startInputVal) : null;
+
+            for (let i = 0; i < total; i++) {
+                const item = selectedScanFiles[i];
+                if (item.status === 'done') {
+                    successCount++;
+                    continue;
+                }
+
+                item.status = 'scanning';
+                renderScanQueue();
+
+                const pct = Math.round((i / total) * 100);
+                if (progressBar) progressBar.style.width = `${pct}%`;
+                if (progressPct) progressPct.textContent = `${pct}%`;
+                if (progressText) progressText.textContent = `Scanning photo ${i + 1} of ${total}: ${item.name}...`;
+                if (startBtnText) startBtnText.textContent = `Scanning (${i + 1}/${total})...`;
+
+                try {
+                    const formData = new FormData();
+                    formData.append('file', item.file);
+                    formData.append('project_id', currentProjectId);
+                    if (currentBillNo) {
+                        formData.append('default_start_bill', currentBillNo.toString());
+                    }
+
+                    const response = await fetch('/api/scan-and-stack', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok || !data.success) {
+                        throw new Error(data.detail || data.error || "Extraction failed");
+                    }
+
+                    item.status = 'done';
+                    item.result = data;
+                    successCount++;
+
+                    // Update auto-incrementing bill number
+                    if (data.bill_no && !isNaN(parseInt(data.bill_no))) {
+                        currentBillNo = parseInt(data.bill_no) + 1;
+                    } else if (currentBillNo) {
+                        currentBillNo++;
+                    }
+
+                    // Live update header badge and drawer count!
+                    await refreshProjectStack();
+
+                    showToast(`✅ Scanned & stacked: Bill #${data.bill_no} (${data.showroom})`, "success");
+                } catch (err) {
+                    console.error("Item scan error:", err);
+                    item.status = 'error';
+                    item.error = err.message || "Failed";
+                    showToast(`Photo ${item.name} error: ${err.message}`, "error");
+                }
+
+                renderScanQueue();
+                const finishedPct = Math.round(((i + 1) / total) * 100);
+                if (progressBar) progressBar.style.width = `${finishedPct}%`;
+                if (progressPct) progressPct.textContent = `${finishedPct}%`;
+
+                // Brief pause for UI rendering
+                await new Promise(r => setTimeout(r, 200));
+            }
+
+            isScanningInProgress = false;
+            isBatchFinished = true;
+
+            if (progressText) progressText.textContent = `Completed! ${successCount} of ${total} bills stacked successfully.`;
+            if (progressBar) progressBar.style.width = "100%";
+            if (progressPct) progressPct.textContent = "100%";
+
+            renderScanQueue();
+
+            if (successCount > 0) {
+                if (successBox) successBox.classList.remove('hidden');
+                const badgeEl = document.getElementById('batchSuccessCountBadge');
+                if (badgeEl) badgeEl.textContent = `${successCount} Bill${successCount === 1 ? '' : 's'} Added`;
+                showToast(`🎉 Batch complete! ${successCount} bills stacked into project.`, "success");
+            }
+        }
+
+        function populateFormWithScannedData(data) {
+            customWordsOverride = null;
+            customBrandOverride = null;
+            customSubjectOverride = null;
+
+            // Bill No: Keep existing if already typed and extracted is empty
+            const billNoInput = document.getElementById('bill_no');
+            if (data.bill_no && data.bill_no.trim()) {
+                billNoInput.value = data.bill_no.trim();
+            } else if (!billNoInput.value.trim()) {
+                billNoInput.value = '1042'; // standard bill number
+            }
+            flashElement(billNoInput);
+
+            // PR No
+            const prInput = document.getElementById('pr_no');
+            if (prInput && data.pr_no) {
+                prInput.value = data.pr_no;
+                flashElement(prInput);
+            }
+
+            // Showroom
+            const showInput = document.getElementById('showroom');
+            if (showInput && data.showroom) {
+                showInput.value = data.showroom;
+                flashElement(showInput);
+            }
+
+            // Address
+            const addrInput = document.getElementById('address');
+            if (addrInput && data.address) {
+                addrInput.value = data.address;
+                flashElement(addrInput);
+            }
+
+            // Mobile
+            const mobInput = document.getElementById('mobile');
+            if (mobInput && data.mobile) {
+                mobInput.value = data.mobile;
+                flashElement(mobInput);
+            }
+
+            // Brand
+            const brandSelect = document.getElementById('brand');
+            if (brandSelect && data.brand) {
+                brandSelect.value = data.brand;
+                handleBrandChange();
+                flashElement(brandSelect);
+            }
+
+            // Date
+            if (data.date) {
+                const dateInput = document.getElementById('date');
+                if (dateInput) {
+                    const parts = data.date.split('.');
+                    if (parts.length === 3) {
+                        dateInput.value = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                    } else {
+                        dateInput.value = data.date;
+                    }
+                    flashElement(dateInput);
+                }
+            }
+
+            // Boards
+            if (data.boards && data.boards.length > 0) {
+                boardRows = data.boards.map(b => ({
+                    w: parseFloat(b.w) || 0,
+                    h: parseFloat(b.h) || 0,
+                    q: parseInt(b.q) || 1,
+                    r: parseFloat(b.rate || b.r) || (BOARD_RATES[b.desc || b.description] || 88),
+                    desc: b.desc || b.description || "Pana Change and Servicing",
+                    isCustomRate: false,
+                }));
+            }
+
+            renderBoardRows();
+            updateCalculations();
+            updateSheetFromForm();
+
+            if (isFitHeight) {
+                setTimeout(fitToViewportHeight, 50);
+            }
+        }
+
+        function flashElement(el) {
+            if (!el) return;
+            el.classList.add('ring-2', 'ring-brand-400', 'bg-brand-50/50', 'dark:bg-brand-950/50');
+            setTimeout(() => {
+                el.classList.remove('ring-2', 'ring-brand-400', 'bg-brand-50/50', 'dark:bg-brand-950/50');
+            }, 1800);
+        }
+
+        // -------------------------------------------------------------
+        // Project Management & Stack System
+        // -------------------------------------------------------------
+        let currentProjectId = localStorage.getItem('biller_active_project') || 'default-project';
+        let allProjects = [];
+
+        async function initProjectSystem() {
+            try {
+                await fetchProjects();
+            } catch (e) {
+                console.error("Error initializing project system:", e);
+            }
+        }
+
+        async function fetchProjects() {
+            try {
+                const res = await fetch('/api/projects');
+                const data = await res.json();
+                if (data.success && Array.isArray(data.projects)) {
+                    allProjects = data.projects;
+                    populateProjectDropdown();
+                    const exists = allProjects.some(p => p.id === currentProjectId);
+                    if (!exists && allProjects.length > 0) {
+                        currentProjectId = allProjects[0].id;
+                        localStorage.setItem('biller_active_project', currentProjectId);
+                    }
+                    updateProjectUI();
+                    await refreshProjectStack();
+                }
+            } catch (e) {
+                console.error("Failed to fetch projects:", e);
+            }
+        }
+
+        function populateProjectDropdown() {
+            const sel = document.getElementById('headerProjectSelect');
+            if (!sel) return;
+            sel.innerHTML = '';
+            allProjects.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = p.name;
+                if (p.id === currentProjectId) {
+                    opt.selected = true;
+                }
+                sel.appendChild(opt);
+            });
+        }
+
+        function updateProjectUI() {
+            const sel = document.getElementById('headerProjectSelect');
+            if (sel) sel.value = currentProjectId;
+
+            const currProj = allProjects.find(p => p.id === currentProjectId);
+            const projName = currProj ? currProj.name : "Default Project";
+
+            const badge = document.getElementById('formProjectBadge');
+            if (badge) badge.textContent = projName;
+
+            const drawerTitle = document.getElementById('drawerProjectName');
+            if (drawerTitle) drawerTitle.textContent = projName;
+        }
+
+        async function switchProject(projectId) {
+            if (!projectId) return;
+            currentProjectId = projectId;
+            localStorage.setItem('biller_active_project', currentProjectId);
+            updateProjectUI();
+            await refreshProjectStack();
+            const currProj = allProjects.find(p => p.id === currentProjectId);
+            showToast(`Switched active project to: ${currProj ? currProj.name : projectId}`, "info");
+        }
+
+        function promptNewProject() {
+            const modal = document.getElementById('newProjectModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
+                const input = document.getElementById('newProjectNameInput');
+                if (input) {
+                    input.value = '';
+                    setTimeout(() => input.focus(), 60);
+                }
+            }
+        }
+
+        function closeNewProjectModal() {
+            const modal = document.getElementById('newProjectModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+            }
+        }
+
+        async function submitCreateProject() {
+            const input = document.getElementById('newProjectNameInput');
+            const name = input ? input.value.trim() : '';
+            if (!name) {
+                showToast("Please enter a project name.", "error");
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/projects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                const data = await res.json();
+                if (res.ok && data.success && data.project) {
+                    closeNewProjectModal();
+                    currentProjectId = data.project.id;
+                    localStorage.setItem('biller_active_project', currentProjectId);
+                    await fetchProjects();
+                    showToast(`Project "${data.project.name}" created and set active!`, "success");
+                } else {
+                    showToast(data.detail || data.error || "Failed to create project", "error");
+                }
+            } catch (e) {
+                console.error(e);
+                showToast("Network error creating project.", "error");
+            }
+        }
+
+        function openProjectStackDrawer() {
+            const modal = document.getElementById('projectStackModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
+                refreshProjectStack();
+            }
+        }
+
+        function closeProjectStackDrawer() {
+            const modal = document.getElementById('projectStackModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+            }
+        }
+
+        async function refreshProjectStack() {
+            try {
+                const res = await fetch(`/api/projects/${currentProjectId}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                if (!data.success || !data.project) return;
+
+                const proj = data.project;
+                const bills = proj.bills || [];
+                const count = bills.length;
+                const totalAmount = proj.total_amount || 0;
+
+                // Update badge in top navbar
+                const badge = document.getElementById('stackCountBadge');
+                if (badge) badge.textContent = count;
+
+                // Update drawer elements
+                const drawerCountEl = document.getElementById('drawerBillCount');
+                if (drawerCountEl) drawerCountEl.textContent = `${count} Bill${count === 1 ? '' : 's'}`;
+
+                const drawerTotalEl = document.getElementById('drawerTotalAmount');
+                if (drawerTotalEl) drawerTotalEl.textContent = `৳ ${totalAmount.toLocaleString()}`;
+
+                const topSheetBtn = document.getElementById('drawerTopSheetBtn');
+                const mergeBtn = document.getElementById('drawerMergeBtn');
+                const zipBtn = document.getElementById('drawerZipBtn');
+                const clearBtn = document.getElementById('drawerClearBtn');
+
+                const hasBills = count > 0;
+                if (topSheetBtn) topSheetBtn.disabled = !hasBills;
+                if (mergeBtn) mergeBtn.disabled = !hasBills;
+                if (zipBtn) zipBtn.disabled = !hasBills;
+                if (clearBtn) clearBtn.disabled = !hasBills;
+
+                renderProjectBillsList(bills);
+            } catch (e) {
+                console.error("Error refreshing project stack:", e);
+            }
+        }
+
+        function renderProjectBillsList(bills) {
+            const container = document.getElementById('projectBillsList');
+            if (!container) return;
+
+            if (!bills || bills.length === 0) {
+                container.innerHTML = `
+                    <div class="py-12 px-4 text-center">
+                        <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-indigo-50 dark:bg-slate-800 flex items-center justify-center text-indigo-500 text-2xl border border-indigo-100 dark:border-slate-700">
+                            📂
+                        </div>
+                        <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200">No Bills in this Project Stack</h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+                            Fill the bill form and submit. Each generated bill is added here automatically. Then generate the Excel Top-Sheet or merge all DOCX files with one click!
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div class="space-y-2.5">';
+            bills.forEach((b, idx) => {
+                const amntFormatted = (b.amount || 0).toLocaleString();
+                html += `
+                    <div class="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/80 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-700 transition-all flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <span class="w-7 h-7 rounded-xl bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-mono font-bold text-xs flex items-center justify-center shrink-0">
+                                ${idx + 1}
+                            </span>
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-extrabold text-xs text-slate-900 dark:text-white">Bill #${b.bill_no}</span>
+                                    <span class="px-1.5 py-0.2 rounded text-[10px] font-mono bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                                        PR: ${b.pr_no || 'N/A'}
+                                    </span>
+                                </div>
+                                <p class="text-xs font-medium text-slate-700 dark:text-slate-300 truncate mt-0.5">${b.showroom}</p>
+                                <p class="text-[10px] text-slate-400 dark:text-slate-500">${b.date || ''}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="text-xs font-mono font-bold text-slate-900 dark:text-white">৳ ${amntFormatted}</span>
+                            <a href="/download/${b.filename}" download="${b.filename}" class="p-1.5 text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors" title="Download Individual DOCX">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            </a>
+                            <button type="button" onclick="removeBillFromStack('${b.bill_no}')" class="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors" title="Remove from Stack">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        async function removeBillFromStack(billNo) {
+            if (!confirm(`Remove Bill #${billNo} from this project?`)) return;
+            try {
+                const res = await fetch(`/api/projects/${currentProjectId}/bills/${billNo}`, {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(`Bill #${billNo} removed from project stack.`, "info");
+                    await refreshProjectStack();
+                } else {
+                    showToast(data.detail || data.error || "Failed to remove bill", "error");
+                }
+            } catch (e) {
+                console.error(e);
+                showToast("Error removing bill.", "error");
+            }
+        }
+
+        async function clearCurrentProjectStack() {
+            if (!confirm("Are you sure you want to clear all bills from this project?")) return;
+            try {
+                const res = await fetch(`/api/projects/${currentProjectId}/clear`, {
+                    method: 'POST'
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast("Project stack cleared.", "info");
+                    await refreshProjectStack();
+                } else {
+                    showToast(data.detail || data.error || "Failed to clear stack", "error");
+                }
+            } catch (e) {
+                console.error(e);
+                showToast("Error clearing stack.", "error");
+            }
+        }
+
+        function downloadTopSheet() {
+            showToast("Generating Top-Sheet Excel via topsheet.py...", "info");
+            const link = document.createElement('a');
+            link.href = `/api/projects/${currentProjectId}/topsheet`;
+            link.setAttribute('download', '');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function downloadMergedDocx() {
+            showToast("Merging all DOCX documents via merge.py...", "info");
+            const link = document.createElement('a');
+            link.href = `/api/projects/${currentProjectId}/merged`;
+            link.setAttribute('download', '');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function downloadProjectZip() {
+            showToast("Preparing Complete Project ZIP package...", "info");
+            const link = document.createElement('a');
+            link.href = `/api/projects/${currentProjectId}/zip`;
+            link.setAttribute('download', '');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Global ESC handler to close modals and drawers
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeScanModal();
+                closeProjectStackDrawer();
+                closeNewProjectModal();
+            }
+        });
+    </script>
+
+    <!-- AI WORKORDER BATCH SCANNER MODAL -->
+    <div id="scanModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-md no-print">
+        <div class="relative w-full max-w-2xl sm:max-w-3xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
+            
+            <!-- Modal Header -->
+            <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/40">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-brand-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/25">
+                        <svg class="w-5 h-5 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                            <path d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-sm font-extrabold text-slate-900 dark:text-white">AI Workorder Batch Scanner</h3>
+                            <span class="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                                Gemini Vision Batch
+                            </span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                            Upload multiple workorders at once &bull; AI scans & stacks each bill into <span id="modalProjectName" class="font-bold text-indigo-600 dark:text-indigo-400">Default Project</span>
+                        </p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeScanModal()" class="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors" title="Close (Esc)">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-5 overflow-y-auto space-y-4">
+                
+                <!-- Hidden Multiple File Input -->
+                <input type="file" id="scanFileInput" multiple accept="image/*" class="hidden" onchange="handleScanFileSelect(event)">
+
+                <!-- Dropzone Area -->
+                <div id="scanDropzone" 
+                     onclick="triggerFileInput()"
+                     ondragover="handleScanDragOver(event)" 
+                     ondragleave="handleScanDragLeave(event)" 
+                     ondrop="handleScanDrop(event)"
+                     class="relative min-h-[135px] rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 bg-slate-50 dark:bg-slate-800/40 flex flex-col items-center justify-center p-4 cursor-pointer transition-all overflow-hidden group">
+                    
+                    <div class="flex flex-col items-center text-center space-y-2">
+                        <div class="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-100 dark:border-indigo-900/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform shadow-sm">
+                            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                Drag & drop all workorder photos here, or <span class="text-brand-600 dark:text-brand-400 underline decoration-2">browse files</span>
+                            </p>
+                            <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Select multiple photos at once (JPG, PNG, WEBP)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Batch Options & Queue Toolbar (Visible when photos selected) -->
+                <div id="batchToolbar" class="hidden flex flex-wrap items-center justify-between gap-2 p-3 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs">
+                    <div class="flex items-center gap-2">
+                        <span id="batchCountBadge" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow-sm">0 Photos</span>
+                        <div class="flex items-center gap-1.5 pl-2 border-l border-slate-300 dark:border-slate-600">
+                            <label for="batchStartBillInput" class="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Start Bill #:</label>
+                            <input type="number" id="batchStartBillInput" placeholder="Auto"
+                                   class="w-20 px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500" title="Optional: Starting bill number to auto-increment if photos don't specify one" />
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="triggerFileInput()" class="px-2.5 py-1 rounded-lg text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-white dark:hover:bg-slate-700 transition-colors">
+                            + Add More
+                        </button>
+                        <button type="button" onclick="clearScanQueue()" class="px-2.5 py-1 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors">
+                            Clear All
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quick Sample Button (when queue is empty) -->
+                <div id="quickSampleAction" class="flex items-center justify-between p-3 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/50 border border-indigo-200/70 dark:border-indigo-800/70 text-xs">
+                    <div class="flex items-center gap-2.5">
+                        <span class="text-xl">📄</span>
+                        <div>
+                            <span class="font-bold text-slate-800 dark:text-slate-200">Workspace Sample: bill.jpeg</span>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400">Walton Signboard Inspection & Receipt Sheet</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="useSampleBillPhoto()" class="px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-700 dark:text-indigo-300 hover:text-white bg-white dark:bg-slate-800 hover:bg-indigo-600 dark:hover:bg-indigo-600 border border-indigo-200 dark:border-indigo-700 transition-all shadow-sm flex items-center gap-1">
+                        <span>⚡ Load bill.jpeg</span>
+                    </button>
+                </div>
+
+                <!-- Overall Progress Bar Container (Active during scan) -->
+                <div id="batchProgressContainer" class="hidden space-y-1.5 p-3.5 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60">
+                    <div class="flex items-center justify-between text-xs">
+                        <span id="batchProgressStatusText" class="font-bold text-indigo-900 dark:text-indigo-200">Processing Photos...</span>
+                        <span id="batchProgressPercentage" class="font-mono font-bold text-indigo-700 dark:text-indigo-400">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-200 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
+                        <div id="batchProgressBar" class="bg-gradient-to-r from-indigo-600 via-brand-500 to-emerald-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Photos Queue List Container (Scrollable) -->
+                <div id="batchQueueContainer" class="hidden space-y-2 max-h-[280px] overflow-y-auto pr-1">
+                    <!-- Cards populated dynamically by renderScanQueue() -->
+                </div>
+
+                <!-- Batch Completed Celebration Box -->
+                <div id="batchSuccessSummaryBox" class="hidden p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/90 dark:bg-emerald-950/50 text-xs space-y-2.5">
+                    <div class="flex items-center justify-between text-emerald-800 dark:text-emerald-300 font-bold">
+                        <span class="flex items-center gap-1.5 text-sm">
+                            <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            Batch Scanning & Stacking Complete!
+                        </span>
+                        <span id="batchSuccessCountBadge" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-200/60 dark:bg-emerald-900/80 text-emerald-800 dark:text-emerald-200">0 Bills Added</span>
+                    </div>
+                    <p class="text-slate-700 dark:text-slate-300 text-[11px]">
+                        All workorders were extracted with Gemini Vision AI, formatted into bills, and stacked into the active project.
+                    </p>
+                    <div class="flex items-center gap-2 pt-1">
+                        <button type="button" onclick="closeScanModal(); openProjectStackDrawer();" class="px-3.5 py-1.5 rounded-xl font-bold text-xs text-white bg-indigo-600 hover:bg-indigo-500 shadow-sm flex items-center gap-1.5 transition-all">
+                            <span>📚 View in Project Stack</span>
+                        </button>
+                        <button type="button" onclick="downloadTopSheet()" class="px-3.5 py-1.5 rounded-xl font-bold text-xs text-emerald-800 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-900/60 hover:bg-emerald-200 border border-emerald-300 dark:border-emerald-800 transition-all flex items-center gap-1.5">
+                            <span>📊 Download Top-Sheet</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer Actions -->
+            <div class="px-5 py-3.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/40">
+                <button type="button" onclick="closeScanModal()" class="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+                    Close
+                </button>
+                <div class="flex items-center gap-2">
+                    <button type="button" id="startBatchScanBtn" onclick="startBatchScanning()" disabled
+                            class="px-5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 via-brand-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-indigo-500/25 flex items-center gap-2 transition-all">
+                        <svg class="w-4 h-4 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        <span id="startBatchScanBtnText">Select Photos to Scan</span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- PROJECT BILLS STACK DRAWER / MODAL -->
+    <div id="projectStackModal" class="fixed inset-0 z-50 hidden flex justify-end bg-slate-950/70 backdrop-blur-sm no-print">
+        <!-- Backdrop click closes drawer -->
+        <div class="fixed inset-0" onclick="closeProjectStackDrawer()"></div>
+
+        <!-- Slide-over Drawer Panel -->
+        <div class="relative w-full max-w-xl sm:max-w-2xl bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col h-full z-10 animate-in slide-in-from-right duration-300">
+            
+            <!-- Drawer Header -->
+            <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/80 dark:bg-slate-800/50">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 via-brand-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/25">
+                        <span class="text-xl">📚</span>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-sm font-extrabold text-slate-900 dark:text-white">Project Bills Stack</h3>
+                            <span id="drawerProjectName" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                                Default Project
+                            </span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                            Batch bills together to generate Excel Top-Sheets & Merged DOCX
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-1.5">
+                    <button type="button" onclick="closeProjectStackDrawer()" class="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors" title="Close Drawer (Esc)">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Project Actions Toolbar (Top-Sheet, Merge DOCX, ZIP, Clear) -->
+            <div class="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 space-y-2.5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <!-- Generate TopSheet Excel Button -->
+                    <button type="button" id="drawerTopSheetBtn" onclick="downloadTopSheet()" disabled
+                            class="px-4 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all group">
+                        <svg class="w-4 h-4 text-emerald-200 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="8" y1="13" x2="16" y2="13"></line>
+                            <line x1="8" y1="17" x2="16" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        <span>Generate Top-Sheet (Excel)</span>
+                    </button>
+
+                    <!-- Merge All DOCX Button -->
+                    <button type="button" id="drawerMergeBtn" onclick="downloadMergedDocx()" disabled
+                            class="px-4 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 transition-all group">
+                        <svg class="w-4 h-4 text-indigo-200 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                            <rect x="8" y="2" width="13" height="15" rx="2"></rect>
+                            <polyline points="4 6 4 20 18 20"></polyline>
+                        </svg>
+                        <span>Merge All DOCX</span>
+                    </button>
+                </div>
+
+                <div class="flex items-center justify-between pt-1">
+                    <div class="flex items-center gap-2">
+                        <button type="button" id="drawerZipBtn" onclick="downloadProjectZip()" disabled
+                                class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-all">
+                            <span>📦 Download ZIP</span>
+                        </button>
+                    </div>
+
+                    <button type="button" id="drawerClearBtn" onclick="clearCurrentProjectStack()" disabled
+                            class="px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 transition-all">
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        <span>Clear Stack</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stack Statistics Ribbon -->
+            <div class="px-5 py-2.5 bg-indigo-50/50 dark:bg-indigo-950/30 border-b border-indigo-100 dark:border-indigo-900/40 flex items-center justify-between text-xs">
+                <div class="flex items-center gap-2">
+                    <span class="text-slate-500 dark:text-slate-400">Total in Stack:</span>
+                    <span id="drawerBillCount" class="font-extrabold text-indigo-700 dark:text-indigo-300">0 Bills</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-slate-500 dark:text-slate-400">Cumulative Amount:</span>
+                    <span id="drawerTotalAmount" class="font-mono font-extrabold text-emerald-600 dark:text-emerald-400">৳ 0</span>
+                </div>
+            </div>
+
+            <!-- Drawer Bills List (Scrollable) -->
+            <div id="projectBillsList" class="flex-1 p-5 overflow-y-auto space-y-3">
+                <!-- Dynamically populated -->
+            </div>
+
+            <!-- Drawer Footer Note -->
+            <div class="p-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 text-center">
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                    💡 Top-Sheet uses <code class="px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-700 font-mono text-[10px]">topsheet.py</code> and DOCX merge uses <code class="px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-700 font-mono text-[10px]">merge.py</code>.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- CREATE NEW PROJECT MODAL -->
+    <div id="newProjectModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm no-print">
+        <div class="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-sm shadow-md">
+                        📁
+                    </div>
+                    <h3 class="text-sm font-extrabold text-slate-900 dark:text-white">Create New Project</h3>
+                </div>
+                <button type="button" onclick="closeNewProjectModal()" class="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center justify-center">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <div class="p-5 space-y-4">
+                <div>
+                    <label for="newProjectNameInput" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Project Name <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="text" id="newProjectNameInput" placeholder="e.g. October 2026 Batch, North Zone Stores"
+                           onkeydown="if(event.key === 'Enter') submitCreateProject();"
+                           class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    <p class="text-[11px] text-slate-400 mt-1">A dedicated directory and bills stack will be created for this project.</p>
+                </div>
+            </div>
+
+            <div class="px-5 py-3.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2 bg-slate-50/70 dark:bg-slate-800/40">
+                <button type="button" onclick="closeNewProjectModal()" class="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+                    Cancel
+                </button>
+                <button type="button" onclick="submitCreateProject()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-500/25 transition-all">
+                    Create & Select
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
