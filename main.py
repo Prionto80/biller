@@ -15,6 +15,13 @@ from docxtpl import DocxTemplate
 from inwords import number_to_words
 from scanner import scan_workorder_image
 import project_manager as pm
+from topsheet import (
+    parse_merged_docx,
+    create_official_topsheet,
+    generate_official_topsheet_from_docx,
+    find_district,
+    clean_company_name,
+)
 
 # Paths
 BASE_DIR = Path(__file__).resolve().parent
@@ -1012,6 +1019,162 @@ async def api_export_zip(project_id: str):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create ZIP package: {str(e)}")
+
+
+@app.post("/api/generate-topsheet-from-docx")
+async def api_generate_topsheet_from_docx(
+    file: UploadFile = File(...),
+    preview: bool = Query(default=False),
+):
+    """
+    Accepts an uploaded merged DOCX file (or single DOCX bill),
+    extracts all invoice records (SL#, Company Name, Work Type, District,
+    Outlet Name + Outlet Address, PR/TN, Bill Ref No., Total Amount),
+    and generates the official 8-column Excel Top-Sheet matching the client format.
+    """
+    if not file.filename.lower().endswith(".docx"):
+        raise HTTPException(status_code=400, detail="Invalid file type. Please upload a .docx file.")
+
+    try:
+        content = await file.read()
+        if not content:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        clean_stem = re.sub(r"[^\w\s-]", "", Path(file.filename).stem).strip().replace(" ", "_") or "Merged"
+        saved_docx_path = OUTPUT_DIR / f"{clean_stem}_{timestamp}.docx"
+        with open(saved_docx_path, "wb") as f:
+            f.write(content)
+
+        output_excel_name = f"{clean_stem}_{timestamp}_TopSheet.xlsx"
+        output_excel_path = OUTPUT_DIR / output_excel_name
+
+        records, final_excel_path = generate_official_topsheet_from_docx(str(saved_docx_path), output_excel_path)
+
+        if not records:
+            raise HTTPException(
+                status_code=400,
+                detail="Could not detect any bills or invoice tables in the uploaded document. Ensure it contains Walton bills.",
+            )
+
+        total_amount = sum(r.get("total_amount", 0) for r in records)
+
+        if preview:
+            return JSONResponse(
+                content={
+                    "success": True,
+                    "filename": output_excel_name,
+                    "download_url": f"/api/download-topsheet?file={output_excel_name}",
+                    "total_bills": len(records),
+                    "total_amount": total_amount,
+                    "total_amount_formatted": f"{total_amount:,}",
+                    "bills": records,
+                }
+            )
+
+        return FileResponse(
+            path=str(final_excel_path),
+            filename=f"{clean_stem}_TopSheet.xlsx",
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate top-sheet from DOCX: {str(e)}")
+
+
+@app.get("/api/download-topsheet")
+async def api_download_topsheet(file: str = Query(...)):
+    """Download an existing generated top-sheet Excel file from OUTPUT_DIR."""
+    clean_filename = Path(file).name
+    file_path = OUTPUT_DIR / clean_filename
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="Requested file not found.")
+
+    return FileResponse(
+        path=str(file_path),
+        filename=clean_filename,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+@app.get("/api/projects/{project_id}/official-topsheet")
+async def api_generate_project_official_topsheet(
+    project_id: str,
+    preview: bool = Query(default=False),
+):
+    """
+    Generate the official 8-column Excel Top Sheet directly from project bills
+    or project merged DOCX.
+    """
+    try:
+        project = pm.get_project(project_id)
+        pdir = pm.get_project_dir(project_id)
+        bills = project.get("bills", [])
+        if not bills:
+            raise HTTPException(status_code=400, detail="Current project has no bills in its stack.")
+        
+        output_filename = f"{pm.slugify(project.get('name', 'TopSheet'))}_Official_TopSheet.xlsx"
+        output_file = pdir / output_filename
+        
+        merged_file = pdir / f"{pm.slugify(project.get('name', 'MergedBills'))}_Merged.docx"
+        if not merged_file.exists():
+            try:
+                merged_file = pm.merge_docx_for_project(project_id)
+            except Exception:
+                merged_file = None
+
+        records = []
+        out_path = output_file
+        if merged_file and merged_file.exists():
+            try:
+                records, out_path = generate_official_topsheet_from_docx(str(merged_file), output_file)
+            except Exception:
+                records = []
+
+        if not records:
+            out_path = pm.generate_topsheet_for_project(project_id)
+            records = [
+                {
+                    "sl": idx,
+                    "company_name": clean_company_name(b.get("brand", "")),
+                    "work_type": "signboard",
+                    "district": find_district(b.get("showroom", "")),
+                    "outlet_address": b.get("showroom", ""),
+                    "pr_tn": b.get("pr_no", ""),
+                    "bill_no": str(b.get("bill_no", "")),
+                    "total_amount": int(round(float(b.get("amount", 0)))),
+                }
+                for idx, b in enumerate(bills, start=1)
+            ]
+
+        total_amount = sum(r.get("total_amount", 0) for r in records)
+
+        if preview:
+            return JSONResponse(
+                content={
+                    "success": True,
+                    "filename": output_filename,
+                    "download_url": f"/api/projects/{project_id}/official-topsheet",
+                    "total_bills": len(records),
+                    "total_amount": total_amount,
+                    "total_amount_formatted": f"{total_amount:,}",
+                    "bills": records,
+                }
+            )
+        
+        return FileResponse(
+            path=str(out_path),
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    except HTTPException:
+        raise
+    except (ValueError, FileNotFoundError) as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate official project top-sheet: {str(e)}")
 
 
 # -------------------------------------------------------------

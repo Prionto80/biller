@@ -241,6 +241,18 @@
                     <span class="hidden sm:inline-block px-1.5 py-0.2 text-[9px] uppercase tracking-wider rounded bg-white/20 font-mono">Batch</span>
                 </button>
 
+                <!-- Top Sheet Generator Button -->
+                <button type="button" onclick="openTopSheetModal()" class="px-3.5 py-1.5 text-xs font-bold rounded-lg text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/80 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-700 shadow-sm flex items-center gap-1.5 transition-all transform hover:-translate-y-0.5 active:translate-y-0 group" title="Upload merged DOCX to extract bills and generate official Excel Top Sheet">
+                    <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="8" y1="13" x2="16" y2="13"></line>
+                        <line x1="8" y1="17" x2="16" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    <span>Top Sheet Generator</span>
+                </button>
+
                 <!-- Sample Data Button -->
                 <button type="button" onclick="fillDemoData()" class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 transition-all shadow-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -338,7 +350,7 @@
                                 <label for="pr_no" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                                     PR No <span class="text-rose-500">*</span>
                                 </label>
-                                <input type="text" id="pr_no" name="pr_no" required
+                                <input type="text" id="pr_no" name="pr_no"
                                        class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white placeholder-slate-400 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium"
                                        placeholder="e.g. PR-8902" />
                             </div>
@@ -395,7 +407,7 @@
                                 <label for="mobile" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                                     Mobile <span class="text-rose-500">*</span>
                                 </label>
-                                <input type="text" id="mobile" name="mobile" required
+                                <input type="text" id="mobile" name="mobile"
                                        class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white placeholder-slate-400 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium"
                                        placeholder="e.g. 01700-000000" />
                             </div>
@@ -2431,9 +2443,9 @@
         }
 
         function downloadTopSheet() {
-            showToast("Generating Top-Sheet Excel via topsheet.py...", "info");
+            showToast("Generating official Top-Sheet Excel...", "info");
             const link = document.createElement('a');
-            link.href = `/api/projects/${currentProjectId}/topsheet`;
+            link.href = `/api/projects/${currentProjectId}/official-topsheet`;
             link.setAttribute('download', '');
             document.body.appendChild(link);
             link.click();
@@ -2460,9 +2472,296 @@
             document.body.removeChild(link);
         }
 
+        // =========================================================
+        // TOP SHEET GENERATOR (OFFICIAL 8-COLUMN CLIENT FORMAT)
+        // =========================================================
+        let currentTopSheetResult = null;
+
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function openTopSheetModal() {
+            resetTopSheetModal();
+            const modal = document.getElementById('topSheetGenModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                document.body.classList.add('overflow-hidden');
+            }
+            updateTopSheetModalProjectInfo();
+        }
+
+        function closeTopSheetModal() {
+            const modal = document.getElementById('topSheetGenModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                document.body.classList.remove('overflow-hidden');
+            }
+        }
+
+        function updateTopSheetModalProjectInfo() {
+            const curr = allProjects.find(p => p.id === currentProjectId);
+            const badge = document.getElementById('topSheetModalProjectBadge');
+            const btn = document.getElementById('topSheetProjectActionBtn');
+            const name = curr ? curr.name : "Default Project";
+            const count = curr ? (curr.bills_count || (curr.bills ? curr.bills.length : 0)) : 0;
+            if (badge) {
+                badge.textContent = `${name} (${count} bill${count === 1 ? '' : 's'})`;
+            }
+            if (btn) {
+                btn.disabled = count === 0;
+                if (count === 0) {
+                    btn.classList.add('opacity-50', 'cursor-not-allowed');
+                    btn.title = "Add bills to this project stack first or upload a merged DOCX below";
+                } else {
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    btn.title = `Generate Top-Sheet for ${count} bill(s) in ${name}`;
+                }
+            }
+        }
+
+        async function generateTopSheetFromActiveProject() {
+            const dropzone = document.getElementById('topSheetDropzone');
+            const loading = document.getElementById('topSheetLoadingState');
+            const results = document.getElementById('topSheetResultsState');
+            const loadingFileName = document.getElementById('topSheetLoadingFileName');
+
+            if (dropzone) dropzone.classList.add('hidden');
+            if (results) results.classList.add('hidden');
+            if (loading) loading.classList.remove('hidden');
+            if (loadingFileName) {
+                const curr = allProjects.find(p => p.id === currentProjectId);
+                loadingFileName.textContent = `Project Stack: ${curr ? curr.name : currentProjectId}`;
+            }
+
+            try {
+                const response = await fetch(`/api/projects/${currentProjectId}/official-topsheet?preview=true`);
+                if (!response.ok) {
+                    let errDetail = "Failed to generate Top Sheet for active project.";
+                    try {
+                        const errData = await response.json();
+                        if (errData && errData.detail) errDetail = errData.detail;
+                    } catch (e) {}
+                    throw new Error(errDetail);
+                }
+
+                const data = await response.json();
+                currentTopSheetResult = data;
+
+                const curr = allProjects.find(p => p.id === currentProjectId);
+                const displayName = curr ? `${curr.name} (Stack)` : 'Active Project Stack';
+                renderTopSheetResults(data, displayName);
+
+                // Auto-trigger download
+                if (data.download_url) {
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = data.download_url;
+                    downloadLink.setAttribute('download', data.filename || 'TopSheet.xlsx');
+                    document.body.appendChild(downloadLink);
+                    downloadLink.click();
+                    document.body.removeChild(downloadLink);
+                    showToast(`Top Sheet generated & downloaded (${data.total_bills} bills)`, "success");
+                }
+            } catch (err) {
+                console.error("Project Top Sheet Generation error:", err);
+                showToast(err.message || "Failed to generate Top Sheet", "error");
+                resetTopSheetModal();
+            } finally {
+                if (loading) loading.classList.add('hidden');
+            }
+        }
+
+        function triggerTopSheetFileInput() {
+            const input = document.getElementById('topSheetDocxInput');
+            if (input) input.click();
+        }
+
+        function handleTopSheetDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const dropzone = document.getElementById('topSheetDropzone');
+            if (dropzone) {
+                dropzone.classList.add('border-emerald-500', 'bg-emerald-50/50', 'dark:bg-emerald-950/30');
+            }
+        }
+
+        function handleTopSheetDragLeave(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const dropzone = document.getElementById('topSheetDropzone');
+            if (dropzone) {
+                dropzone.classList.remove('border-emerald-500', 'bg-emerald-50/50', 'dark:bg-emerald-950/30');
+            }
+        }
+
+        function handleTopSheetDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const dropzone = document.getElementById('topSheetDropzone');
+            if (dropzone) {
+                dropzone.classList.remove('border-emerald-500', 'bg-emerald-50/50', 'dark:bg-emerald-950/30');
+            }
+            const dt = e.dataTransfer;
+            if (dt && dt.files && dt.files.length > 0) {
+                processTopSheetDocxFile(dt.files[0]);
+            }
+        }
+
+        function handleTopSheetFileSelect(e) {
+            const files = e.target.files;
+            if (files && files.length > 0) {
+                processTopSheetDocxFile(files[0]);
+            }
+            e.target.value = '';
+        }
+
+        function resetTopSheetModal() {
+            currentTopSheetResult = null;
+            const dropzone = document.getElementById('topSheetDropzone');
+            const loading = document.getElementById('topSheetLoadingState');
+            const results = document.getElementById('topSheetResultsState');
+            const input = document.getElementById('topSheetDocxInput');
+
+            if (dropzone) dropzone.classList.remove('hidden');
+            if (loading) loading.classList.add('hidden');
+            if (results) results.classList.add('hidden');
+            if (input) input.value = '';
+            updateTopSheetModalProjectInfo();
+        }
+
+        async function processTopSheetDocxFile(file) {
+            if (!file) return;
+            if (!file.name.toLowerCase().endsWith('.docx')) {
+                showToast("Please upload a Word document (.docx)", "error");
+                return;
+            }
+
+            const dropzone = document.getElementById('topSheetDropzone');
+            const loading = document.getElementById('topSheetLoadingState');
+            const results = document.getElementById('topSheetResultsState');
+            const loadingFileName = document.getElementById('topSheetLoadingFileName');
+
+            if (dropzone) dropzone.classList.add('hidden');
+            if (results) results.classList.add('hidden');
+            if (loading) loading.classList.remove('hidden');
+            if (loadingFileName) loadingFileName.textContent = file.name;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch('/api/generate-topsheet-from-docx?preview=true', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    let errDetail = "Failed to parse DOCX document.";
+                    try {
+                        const errData = await response.json();
+                        if (errData && errData.detail) errDetail = errData.detail;
+                    } catch (e) {}
+                    throw new Error(errDetail);
+                }
+
+                const data = await response.json();
+                currentTopSheetResult = data;
+
+                // Render results
+                renderTopSheetResults(data, file.name);
+
+                // Auto-trigger instant download
+                if (data.download_url) {
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = data.download_url;
+                    downloadLink.setAttribute('download', data.filename || 'TopSheet.xlsx');
+                    document.body.appendChild(downloadLink);
+                    downloadLink.click();
+                    document.body.removeChild(downloadLink);
+                    showToast(`Top Sheet generated & downloaded (${data.total_bills} bills)`, "success");
+                }
+
+            } catch (err) {
+                console.error("Top Sheet Generation error:", err);
+                showToast(err.message || "Failed to generate Top Sheet", "error");
+                resetTopSheetModal();
+            } finally {
+                if (loading) loading.classList.add('hidden');
+            }
+        }
+
+        function renderTopSheetResults(data, originalFileName) {
+            const results = document.getElementById('topSheetResultsState');
+            const countEl = document.getElementById('topSheetResultCount');
+            const totalEl = document.getElementById('topSheetResultTotal');
+            const rangeEl = document.getElementById('topSheetResultRange');
+            const filenameEl = document.getElementById('topSheetResultFileName');
+            const tableBody = document.getElementById('topSheetPreviewTableBody');
+
+            if (results) results.classList.remove('hidden');
+            if (countEl) countEl.textContent = `${data.total_bills} Bills`;
+            if (totalEl) totalEl.textContent = `BDT ${data.total_amount_formatted}`;
+            if (filenameEl) filenameEl.textContent = originalFileName || 'document.docx';
+
+            const bills = data.bills || [];
+            if (rangeEl) {
+                const billNos = bills.map(b => parseInt(b.bill_no)).filter(n => !isNaN(n));
+                if (billNos.length > 0) {
+                    const minB = Math.min(...billNos);
+                    const maxB = Math.max(...billNos);
+                    rangeEl.textContent = minB === maxB ? `Bill No ${minB}` : `Bill No ${minB}-${maxB}`;
+                } else {
+                    rangeEl.textContent = "Bill No";
+                }
+            }
+
+            if (tableBody) {
+                tableBody.innerHTML = bills.map((b, idx) => `
+                    <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/60 dark:hover:bg-slate-800/40 text-[11px] transition-colors">
+                        <td class="px-2.5 py-1.5 text-center font-mono font-medium text-slate-500">${b.sl || (idx + 1)}</td>
+                        <td class="px-2.5 py-1.5 text-center font-bold text-slate-800 dark:text-slate-200">${escapeHtml(b.company_name || '')}</td>
+                        <td class="px-2.5 py-1.5 text-left text-slate-600 dark:text-slate-300 capitalize">${escapeHtml(b.work_type || '')}</td>
+                        <td class="px-2.5 py-1.5 text-left font-medium text-slate-700 dark:text-slate-300">${escapeHtml(b.district || '')}</td>
+                        <td class="px-2.5 py-1.5 text-left text-slate-600 dark:text-slate-400 max-w-[260px] truncate" title="${escapeHtml(b.outlet_address || '')}">${escapeHtml(b.outlet_address || '')}</td>
+                        <td class="px-2.5 py-1.5 text-right font-mono text-slate-600 dark:text-slate-400">${escapeHtml(b.pr_tn || '-')}</td>
+                        <td class="px-2.5 py-1.5 text-center font-mono font-bold text-indigo-600 dark:text-indigo-400">${escapeHtml(b.bill_no || '')}</td>
+                        <td class="px-2.5 py-1.5 text-right font-mono font-extrabold text-slate-900 dark:text-white">${(b.total_amount || 0).toLocaleString()}</td>
+                    </tr>
+                `).join('') + `
+                    <tr class="bg-emerald-50/70 dark:bg-emerald-950/40 font-bold text-[11px] border-t-2 border-emerald-500">
+                        <td colspan="6" class="px-3 py-2 text-right text-emerald-900 dark:text-emerald-200">Total Amount =</td>
+                        <td class="px-2.5 py-2 text-center text-slate-400">-</td>
+                        <td class="px-3 py-2 text-right font-mono font-extrabold text-emerald-700 dark:text-emerald-300 text-xs">${data.total_amount_formatted}</td>
+                    </tr>
+                `;
+            }
+        }
+
+        function downloadCurrentTopSheetFile() {
+            if (!currentTopSheetResult || !currentTopSheetResult.download_url) {
+                showToast("No Top Sheet available to download. Please generate or upload a DOCX file first.", "error");
+                return;
+            }
+            const link = document.createElement('a');
+            link.href = currentTopSheetResult.download_url;
+            link.setAttribute('download', currentTopSheetResult.filename || 'TopSheet.xlsx');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
         // Global ESC handler to close modals and drawers
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
+                closeTopSheetModal();
                 closeScanModal();
                 closeProjectStackDrawer();
                 closeNewProjectModal();
@@ -2759,6 +3058,171 @@
                 <button type="button" onclick="submitCreateProject()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-500/25 transition-all">
                     Create & Select
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOP SHEET GENERATOR MODAL -->
+    <div id="topSheetGenModal" class="fixed inset-0 z-50 hidden items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-md no-print">
+        <!-- Backdrop click closes modal -->
+        <div class="fixed inset-0" onclick="closeTopSheetModal()"></div>
+
+        <div class="relative w-full max-w-3xl sm:max-w-4xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] z-10 animate-in fade-in zoom-in-95 duration-200">
+            
+            <!-- Modal Header -->
+            <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/40">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-emerald-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/25">
+                        <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="8" y1="13" x2="16" y2="13"></line>
+                            <line x1="8" y1="17" x2="16" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-sm font-extrabold text-slate-900 dark:text-white">Top Sheet Generator</h3>
+                            <span class="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                8-Column Client Format
+                            </span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                            Upload merged DOCX or generate directly from active project &bull; Produces official Excel Top-Sheet
+                        </p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeTopSheetModal()" class="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors" title="Close (Esc)">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-5 overflow-y-auto space-y-4">
+                
+                <!-- Hidden DOCX File Input -->
+                <input type="file" id="topSheetDocxInput" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden" onchange="handleTopSheetFileSelect(event)">
+
+                <!-- Mode 1: Active Project Stack Quick Action -->
+                <div id="topSheetProjectBanner" class="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-indigo-500/10 border border-emerald-200/80 dark:border-emerald-800/60 shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl">📚</span>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-slate-900 dark:text-white">Active Project Stack</span>
+                                <span id="topSheetModalProjectBadge" class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">Default Project (0 bills)</span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400">Generate formatted client Top-Sheet directly from this project's bills</p>
+                        </div>
+                    </div>
+                    <button type="button" id="topSheetProjectActionBtn" onclick="generateTopSheetFromActiveProject()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-500/20 flex items-center gap-1.5 transition-all">
+                        <svg class="w-4 h-4 text-emerald-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line></svg>
+                        <span>Generate from Stack</span>
+                    </button>
+                </div>
+
+                <!-- Divider with "OR" -->
+                <div class="relative flex items-center justify-center py-1">
+                    <div class="border-t border-slate-200 dark:border-slate-700 w-full"></div>
+                    <span class="bg-white dark:bg-slate-900 px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0">OR Upload Merged / Single DOCX</span>
+                </div>
+
+                <!-- Mode 2: Dropzone Area -->
+                <div id="topSheetDropzone" 
+                     onclick="triggerTopSheetFileInput()"
+                     ondragover="handleTopSheetDragOver(event)" 
+                     ondragleave="handleTopSheetDragLeave(event)" 
+                     ondrop="handleTopSheetDrop(event)"
+                     class="relative min-h-[140px] rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 bg-slate-50 dark:bg-slate-800/40 flex flex-col items-center justify-center p-5 cursor-pointer transition-all overflow-hidden group">
+                    
+                    <div class="flex flex-col items-center text-center space-y-2">
+                        <div class="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-100 dark:border-emerald-900/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform shadow-sm">
+                            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="12" y1="18" x2="12" y2="12"></line>
+                                <line x1="9" y1="15" x2="15" y2="15"></line>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                Drag & drop merged DOCX file here, or <span class="text-emerald-600 dark:text-emerald-400 underline decoration-2">browse files</span>
+                            </p>
+                            <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Accepts merged bills or individual bill Word documents (.docx)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="topSheetLoadingState" class="hidden py-10 flex flex-col items-center justify-center space-y-3 text-center">
+                    <div class="w-12 h-12 rounded-full border-4 border-emerald-200 border-t-emerald-600 animate-spin"></div>
+                    <div>
+                        <p class="text-sm font-bold text-slate-900 dark:text-white">Analyzing Bills & Generating Top-Sheet...</p>
+                        <p id="topSheetLoadingFileName" class="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5"></p>
+                    </div>
+                </div>
+
+                <!-- Results State -->
+                <div id="topSheetResultsState" class="hidden space-y-4">
+                    <!-- Stat Summary Cards -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                            <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Total Invoices</span>
+                            <div id="topSheetResultCount" class="text-lg font-black text-slate-900 dark:text-white mt-0.5">0 Bills</div>
+                        </div>
+                        <div class="p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
+                            <span class="text-[10px] uppercase font-bold tracking-wider text-emerald-600 dark:text-emerald-400">Total Payable Amount</span>
+                            <div id="topSheetResultTotal" class="text-lg font-black text-emerald-700 dark:text-emerald-300 font-mono mt-0.5">BDT 0</div>
+                        </div>
+                        <div class="p-3 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800">
+                            <span class="text-[10px] uppercase font-bold tracking-wider text-indigo-600 dark:text-indigo-400">Bill Number Range</span>
+                            <div id="topSheetResultRange" class="text-lg font-black text-indigo-700 dark:text-indigo-300 font-mono mt-0.5">Bill No</div>
+                        </div>
+                    </div>
+
+                    <!-- Extracted Table Preview -->
+                    <div class="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                        <div class="px-3.5 py-2 bg-slate-100/80 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
+                            <span class="font-bold text-slate-700 dark:text-slate-300">Extracted Invoices Preview</span>
+                            <span id="topSheetResultFileName" class="text-[11px] font-mono text-slate-500 truncate max-w-[200px]"></span>
+                        </div>
+                        <div class="max-h-60 overflow-y-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 dark:bg-slate-800/60 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 sticky top-0">
+                                        <th class="px-2.5 py-2 text-center">SL No</th>
+                                        <th class="px-2.5 py-2 text-center">Company Name</th>
+                                        <th class="px-2.5 py-2 text-left">Work Type</th>
+                                        <th class="px-2.5 py-2 text-left">District</th>
+                                        <th class="px-2.5 py-2 text-left">Outlet + Address</th>
+                                        <th class="px-2.5 py-2 text-right">PR/TN</th>
+                                        <th class="px-2.5 py-2 text-center">Bill No</th>
+                                        <th class="px-2.5 py-2 text-right">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="topSheetPreviewTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="px-5 py-3.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/40">
+                <button type="button" onclick="triggerTopSheetFileInput()" class="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+                    Upload Another File
+                </button>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="closeTopSheetModal()" class="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+                        Close
+                    </button>
+                    <button type="button" onclick="downloadCurrentTopSheetFile()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-500/25 flex items-center gap-1.5 transition-all">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        <span>Download Top-Sheet (.xlsx)</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>

@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-from topsheet import create_excel
+from topsheet import create_excel, generate_official_topsheet_from_docx, create_official_topsheet, parse_merged_docx
 from merge import merge_folder
 from docx import Document
 from docxcompose.composer import Composer
@@ -252,26 +252,45 @@ def clear_project_bills(project_id: str) -> Dict[str, Any]:
 
 def generate_topsheet_for_project(project_id: str) -> Path:
     """
-    Generate the Excel Top-Sheet for all bills in the project using topsheet.py's create_excel.
+    Generate the official 8-column Excel Top-Sheet for all bills in the project.
+    If merged docx or bill docx files exist, extracts all 8 columns from the documents.
     """
     project = get_project(project_id)
     bills = project.get("bills", [])
     if not bills:
         raise ValueError("Project has no bills to generate a top-sheet.")
 
+    pdir = get_project_dir(project_id)
+    safe_name = slugify(project.get("name", "TopSheet"))
+    output_filename = f"{safe_name}_TopSheet.xlsx"
+    output_file = pdir / output_filename
+
+    # Attempt to extract from merged docx first
+    merged_file = pdir / f"{slugify(project.get('name', 'MergedBills'))}_Merged.docx"
+    if not merged_file.exists():
+        try:
+            merged_file = merge_docx_for_project(project_id)
+        except Exception:
+            merged_file = None
+
+    if merged_file and merged_file.exists():
+        try:
+            generate_official_topsheet_from_docx(str(merged_file), output_file)
+            return output_file
+        except Exception:
+            pass
+
+    # Fallback: construct records from project bill data
     invoices = [
         {
             "showroom": b.get("showroom", "Showroom"),
             "bill_no": str(b.get("bill_no", "")),
             "amount": int(round(float(b.get("amount", 0)))),
+            "brand": b.get("brand", "c"),
+            "pr_no": b.get("pr_no", ""),
         }
         for b in bills
     ]
-
-    pdir = get_project_dir(project_id)
-    safe_name = slugify(project.get("name", "TopSheet"))
-    output_filename = f"{safe_name}_TopSheet.xlsx"
-    output_file = pdir / output_filename
 
     create_excel(invoices, output_file)
     return output_file
